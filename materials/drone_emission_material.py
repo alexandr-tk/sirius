@@ -16,7 +16,7 @@ def create_drone_emission_material(drone_name):
     links.new(emission.outputs["Emission"], output.inputs["Surface"])
 
 
-def configure_lighting_copositing():
+def configure_lighting_compositing():
     bpy.context.scene.view_settings.view_transform = 'Filmic' 
 
     bpy.context.scene.use_nodes=True

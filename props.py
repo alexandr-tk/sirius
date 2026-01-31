@@ -68,7 +68,6 @@ class DroneShowSettings(bpy.types.PropertyGroup):
 
 
 def register():
-    print("Regsisisidianiaf")
     bpy.utils.register_class(DroneShowSettings) 
     bpy.types.Scene.my_props = bpy.props.PointerProperty(type=DroneShowSettings)
 
