@@ -1,9 +1,23 @@
 # Sirius — Blender Add-on for Drone Show Design
-An experimental Python-based Blender add-on for creating and exporting drone-show animations.  
-Built to generate takeoff grids, preview lighting effects, and export flight paths to CSV.
 
-> 🚧 Project in early development — core features under construction.
+> 🚧 **Status: Alpha / Active Development** — Core architecture implemented; pathfinding & export modules in progress.
 
-**Tech stack:** Python · Blender API · CSV export · 3D visualization
+An experimental Python-based Blender add-on for orchestrating drone shows.  
+Designed to streamline the workflow of generating takeoff grids, previewing lighting effects, and (soon) exporting flight paths to CSV.
 
-<img width="1152" height="765" alt="Screenshot 2025-10-12 162619" src="https://github.com/user-attachments/assets/6cf8b290-9b42-45c7-aed2-5b4ada0e3666" />
+<img width="1152" height="765" alt="Sirius Demo" src="https://github.com/user-attachments/assets/6cf8b290-9b42-45c7-aed2-5b4ada0e3666" />
+
+## 🌟 Features
+
+### ✅ Implemented
+* **Parametric Grid Generation:** Instantly spawn `N` drones in customizable grid formations (rows, columns, spacing).
+* **Real-time Visualization:** Dynamic material assignments for LED color/emission testing in the viewport.
+* **Modular Architecture:** Separated logic for Panels, Operators, and Property groups for easy extension.
+
+### 🚧 Roadmap (In Development)
+* **Collision-Free Pathfinding:** Integrating an algorithm (likely A*) to auto-calculate safe transitions between formations.
+* **Swarm Safety Checks:** Velocity and proximity validation for 500+ agent swarms.
+* **CSV Export Engine:** Export animation data (XYZ + Color) to industry-standard `.csv` formats for hardware uploads.
+
+---
+**Tech Stack:** Python · Blender API · 3D Visualization · Algorithm Design
