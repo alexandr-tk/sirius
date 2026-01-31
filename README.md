@@ -1,11 +1,27 @@
-# Sirius — Blender Add-on for Drone Show Design
+<div align="center">
+  <img src="assets/logo.png" alt="Sirius Logo" width="120" height="auto" />
+  
+  <h1>Sirius</h1>
+  
+  <p>
+    <strong>Open-source drone show orchestration tool for Blender</strong>
+  </p>
 
-> 🚧 **Status: Alpha / Active Development** — Core architecture implemented; pathfinding & export modules in progress.
+  <p>
+    <a href="https://github.com/alexandr-tk/sirius/graphs/contributors">
+      <img src="https://img.shields.io/github/contributors/alexandr-tk/sirius" alt="Contributors" />
+    </a>
+    <a href="https://github.com/alexandr-tk/sirius/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/alexandr-tk/sirius" alt="License" />
+    </a>
+  </p>
 
-An experimental Python-based Blender add-on for orchestrating drone shows.  
-Designed to streamline the workflow of generating takeoff grids, previewing lighting effects, and (soon) exporting flight paths to CSV.
+  <h4>
+    🚧 Status: Alpha / Active Development 🚧
+  </h4>
+</div>
 
-<img width="100%" alt="Sirius Demo" src="https://github.com/user-attachments/assets/6cf8b290-9b42-45c7-aed2-5b4ada0e3666" />
+<br />
 
 ## 🌟 Features
 
