@@ -5,7 +5,7 @@
 An experimental Python-based Blender add-on for orchestrating drone shows.  
 Designed to streamline the workflow of generating takeoff grids, previewing lighting effects, and (soon) exporting flight paths to CSV.
 
-<img width="1152" height="765" alt="Sirius Demo" src="https://github.com/user-attachments/assets/6cf8b290-9b42-45c7-aed2-5b4ada0e3666" />
+<img width="100%" alt="Sirius Demo" src="https://github.com/user-attachments/assets/6cf8b290-9b42-45c7-aed2-5b4ada0e3666" />
 
 ## 🌟 Features
 
