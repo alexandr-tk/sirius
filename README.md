@@ -1,119 +1,81 @@
-<a name="readme-top"></a>
+# Sirius
 
-<div align="center">
-  <a href="https://github.com/alexandr-tk/sirius">
-    <img src="assets/logo.png" alt="Logo" width="120" height="120">
-  </a>
+![Sirius](assets/logo.png)
 
-  <h3 align="center">Sirius</h3>
+Open-source drone light-show animation tool for Blender. Design formations and flight paths of any complexity, validate them for safe flight, and export to the data formats used by modern drone-control software.
 
-  <p align="center">
-    Open-source drone show orchestration tool for Blender
-    <br />
-    <a href="https://github.com/alexandr-tk/sirius/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/alexandr-tk/sirius/issues">Request Feature</a>
-  </p>
-</div>
+**Status:** Alpha — under active development. See [project-plan.md](project-plan.md) for the full roadmap.
 
-<div align="center">
-  <a href="https://github.com/alexandr-tk/sirius/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/alexandr-tk/sirius?style=for-the-badge" alt="Contributors" />
-  </a>
-  <a href="https://github.com/alexandr-tk/sirius/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/alexandr-tk/sirius?style=for-the-badge" alt="License" />
-  </a>
-</div>
+## Overview
 
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#features">Features</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-  </ol>
-</details>
-
-## About The Project
-
-**Sirius** is a modular add-on designed to bring professional drone show orchestration capabilities directly into the Blender viewport. It aims to bridge the gap between artistic animation and hardware deployment by providing tools for parametric generation, swarm safety validation, and data export.
-
-The project is currently in **Alpha** status and under active development.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-### Built With
-
-* [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-* [![Blender](https://img.shields.io/badge/Blender-E87D0D?style=for-the-badge&logo=blender&logoColor=white)](https://www.blender.org/)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Getting Started
-
-To get a local copy up and running, follow these steps.
-
-### Prerequisites
-
-* Blender 3.6 or 4.0+
-* Basic understanding of Blender's Python API (if contributing)
-
-### Installation
-
-1. Download the latest release `.zip` file from the releases page (or clone the repository).
-2. Open Blender.
-3. Go to **Edit > Preferences > Add-ons**.
-4. Click **Install...** and select the downloaded `.zip` file.
-5. Enable the add-on by checking the box next to **Sirius**.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+Sirius brings professional drone-show choreography into the Blender viewport. It bridges artistic animation and hardware deployment: generate formations from arbitrary 3D objects, animate drones and their LEDs, compute safe transitions between formations, validate against real-world flight constraints, and export for real shows.
 
 ## Features
 
-The core architecture focuses on modularity, separating logic for Panels, Operators, and Property groups to allow for easy extension.
+**Planned (MVP)**
+- Scalable swarm representation (Point Cloud + instances) for 1,000+ drones
+- Takeoff grid / launchpad generation
+- Formation generation from any mesh, curve, text, or logo with density and spacing control
+- Per-drone and group LED color animation on the timeline
+- Automatic formation-to-formation transitions (optimal slot assignment + velocity-profiled motion)
+- Collision and feasibility validation (spacing, speed, acceleration, geofence, altitude) with live viewport feedback
+- Multi-format export with coordinate-frame and sample-rate conversion
 
-* **Parametric Grid Generation:** Instantly spawn drones in customizable grid formations (rows, columns, spacing).
-* **Real-time Visualization:** Dynamic material assignments for LED color and emission testing directly in the viewport.
-* **Modular Architecture:** Clean code structure designed for open-source contribution and scalability.
+**Implemented**
+- Parametric takeoff grid generation
+- Per-drone LED color and emission control
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## Architecture
+
+A layered design keeps the hard logic testable and Blender-version-isolated:
+
+- **Core** — bpy-free data model and algorithms (assignment, collision, feasibility, interpolation, coordinate conversion)
+- **Blender adapter** — thin `bpy` integration (swarm object, Geometry Nodes, handlers, viewport drawing via the `gpu` module)
+- **Exporters** — format-agnostic trajectory sampler with one writer per target format
+- **UI** — sidebar panels, operators, property groups
+
+Drones are represented as a single Point Cloud (data backbone) with instanced visual proxies and one shared LED material, driven by Geometry Nodes for formation generation and native F-Curves/NLA for animation.
+
+## Requirements
+
+- Blender 5.0 or newer (developed against the 5.1 alpha)
+- Python 3.11+
+
+## Installation
+
+1. Download the latest release `.zip`.
+2. In Blender, open **Edit → Preferences → Get Extensions → Install from disk** and select the `.zip`.
+3. Enable **Sirius**.
+
+## Export Formats
+
+| Format | Type | Target stack |
+| --- | --- | --- |
+| CSV | Flight-ready | Generic |
+| Vimdrones raw | Flight-ready | Vimdrones GCS |
+| UgCS PATH / PATH3 | Flight-ready | SPH Engineering Drone Show Software |
+| VVIZ | Visualization/interchange | Verge Aero, Finale3D, Depence, FWSim |
+| Depence | Visualization | Syncronorm Depence |
 
 ## Roadmap
 
-- [x] **Parametric Grid Generation**
-- [x] **Real-time LED Visualization**
-- [ ] **Collision-Free Pathfinding:** Integration of A* algorithms to auto-calculate safe transitions between formations.
-- [ ] **Swarm Safety Checks:** Velocity and proximity validation for 500+ agent swarms.
-- [ ] **CSV Export Engine:** Export animation data (XYZ + Color) to industry-standard formats for hardware uploads.
+The plan is phased around a minimum end-to-end MVP (create → animate → transition → validate → export), followed by accelerators and polish.
 
-See the [open issues](https://github.com/alexandr-tk/sirius/issues) for a full list of proposed features and known issues.
+- **Phase 0** — Stabilize, restructure, scalable foundation
+- **Phase 1** — Launchpad and formation generation
+- **Phase 2** — Animation and LED
+- **Phase 3** — Transitions and assignment
+- **Phase 4** — Collision and feasibility validation
+- **Phase 5** — Export engine
+- **Phase 6** — Accelerators (geo-referencing, pyro, music sync, flocking, import round-trip) — post-MVP
+- **Phase 7** — Polish and release
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+Full details, including verified Blender API decisions and the test strategy, are in [project-plan.md](project-plan.md).
+
+## Contributing
+
+Contributions are welcome. Pick an open issue labeled `phase-N` or `good first issue`, and read [project-plan.md](project-plan.md) for architecture and conventions before starting. Core algorithm and exporter modules are pure Python and unit-testable without Blender.
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Contact
-
-**Alex Tkachyov** - [LinkedIn](https://linkedin.com/in/alexandr-tkachyov)
-
-Project Link: [https://github.com/alexandr-tk/sirius](https://github.com/alexandr-tk/sirius)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+[MIT](LICENSE)
