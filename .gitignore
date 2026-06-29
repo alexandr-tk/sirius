@@ -1,12 +1,92 @@
-# Byte-compiled / optimized / DLL files
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
-# OS files
-.DS_Store
-Thumbs.db
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+pip-wheel-metadata/
 
-# IDE settings 
-.vscode/
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ---------------------------------------------------------------------------
+# Testing / linting / type-checking caches
+# ---------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Blender
+# ---------------------------------------------------------------------------
+# Auto-saved backup files Blender writes next to any .blend
+*.blend1
+*.blend2
+*.blend3
+*.blend@
+# Blender crash/autosave dumps
+*.crash.txt
+# Built add-on / extension packages (uncomment if you build zips locally)
+# sirius-*.zip
+
+# ---------------------------------------------------------------------------
+# Export outputs (generated show data — keep golden test fixtures tracked)
+# ---------------------------------------------------------------------------
+# Scratch export folder for manual testing; commit reference files under tests/
+/exports/
+*.vviz.tmp
+
+# ---------------------------------------------------------------------------
+# Editors / IDEs
+# ---------------------------------------------------------------------------
 .idea/
+*.swp
+*.swo
+*~
+
+# VS Code: ignore personal settings but keep shared project config tracked.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# ---------------------------------------------------------------------------
+# OS files
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Local tooling / secrets / logs
+# ---------------------------------------------------------------------------
+.firecrawl/
+opencode.json
+.env
+.env.*
+*.log
