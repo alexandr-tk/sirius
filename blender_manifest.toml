@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+id = "sirius"
+version = "0.1.0"
+name = "Sirius"
+tagline = "Design drone light-shows and export to flight-ready formats"
+maintainer = "Alexandr Tkachyov"
+type = "add-on"
+tags = ["3D View", "Animation", "Import-Export"]
+blender_version_min = "4.5.0"
+license = ["SPDX:MIT"]
+# website = [to do]
+
+[permissions]
+files = "Export show data (CSV/VVIZ/UgCS/Vimdrones) to disk" 

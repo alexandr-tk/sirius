@@ -4,10 +4,10 @@ from . import panels, operators, props, materials
 bl_info = {
     "name": "Sirius",
     "author": "Alexandr Tkachyov",
-    "version": (1, 0, 0),
-    "blender": (4, 3, 2),
+    "version": (0, 1, 0),
+    "blender": (4, 5, 0),
     "location": "View3D > Sidebar > Sirius",
-    "description": "Create and manage drone show formations and flight paths.",
+    "description": "Design drone light-shows and export to flight-ready formats.",
     "category": "Object"
 }
 
