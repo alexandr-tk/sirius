@@ -2,31 +2,36 @@
 
 > Open-source Blender add-on for designing professional drone light-show animations and exporting
 > them to real-world drone-control formats. Target: **Blender 4.5 LTS** (current LTS, supported through July 2027).
-> License: MIT. Status of this document: **developer-ready architectural roadmap** (planning only).
+> License: MIT. Status: **planning / pre-implementation roadmap**.
 
 ---
 
-## 0. Methodology Note (how this plan was produced)
+## 0. Scope & Conventions
 
-Per the project-roadmap-architect protocol, the end-to-end user-workflow section (§6) and the test
-strategy (§7) are normally delegated to dedicated sub-agents (`@usecase-architect`,
-`@test-suite-architect`). In this environment those agents are not available as discrete tools, so
-this document **integrates those sections directly**, produced by the architect role and grounded
-entirely in the verified facts of the project brief (domain model, export specs, Blender 4.5 LTS API
-constraints) plus the authoritative sources cited inline. Every non-obvious API recommendation was
-checked against the current Blender manual / API docs (no deprecated APIs are proposed). If the user
-later runs a change through a real `@usecase-architect` / `@test-suite-architect` pass, only §6 and
-§7 are expected to be amended; the architecture and phases (§2–§5) are stable.
+This is the architectural roadmap for Sirius. It defines the target architecture (§1–§3), the phased
+implementation plan with per-phase deliverables and test milestones (§4), the export architecture
+(§5), the end-to-end user workflows (§6), and the test strategy (§7). It is a planning document: it
+specifies *what* to build and *in what order*, not the implementation itself. The architecture and
+phases (§1–§5) are stable; the workflow and test sections (§6–§7) are expected to evolve as features
+land.
 
-**Verification performed for this plan:**
-- Read every file in the current repo (confirms the blocking `ImportError`, `bpy.ops`-in-loop,
-  one-material-per-drone, and the two `pass` stubs).
-- Confirmed the **VVIZ** spec against `https://docs.verge.aero/drone-show-software/verge-design-studio/vviz-format`.
-- Confirmed Blender 4.5 LTS (released 2025-07-15, supported through July 2027) manual / release-notes
-  pages for **Point Cloud** (`/modeling/point_cloud/`, incl. dedicated edit mode), **Geometry
-  Nodes** features (Node-Based Tools, Gizmos, Baking, Import nodes CSV/OBJ/PLY/STL/TXT/VDB — all
-  shipped in 4.5 LTS), the **Extensions** getting-started page, and editors (Dope Sheet / Graph
-  Editor / NLA / VSE).
+**Conventions used throughout:**
+- **[R] / [F] / [N]** in the phase tables mark whether a module is rebuilt from scratch, fixed/ported
+  from the prototype, or newly written (§4).
+- Code identifiers, file paths, and Blender API names are written in `monospace`.
+- Every API recommendation targets a current, non-deprecated Blender 4.5 LTS API. The
+  deprecated-API avoid-list is §8.
+
+**Primary references.** Every API and format decision in this plan is grounded in the following
+authoritative sources:
+- **Blender 4.5 LTS manual and Python API** — Extensions (`blender_manifest.toml`), Point Cloud
+  objects, Geometry Nodes (Node-Based Tools, Gizmos, Baking, Import nodes), the `gpu` module,
+  `depsgraph`/`msgbus`, `mathutils.kdtree`/`bvhtree`, and the Dope Sheet / Graph Editor / NLA / VSE
+  editors. Blender 4.5 LTS was released 2025-07-15 and is supported through July 2027.
+- **Export-format specifications** — Verge Aero **VVIZ**
+  (`https://docs.verge.aero/drone-show-software/verge-design-studio/vviz-format`), SPH Engineering
+  **UgCS PATH / PATH3**, **Vimdrones** raw, and **Syncronorm Depence**.
+- **The current repository**, audited in full to produce the Phase 0 remediation list (§1.2).
 
 ---
 
@@ -47,8 +52,8 @@ Designer." Concrete success criteria:
 - Ship as a modern **Blender Extension** (`blender_manifest.toml`), MIT, documented, tested.
 
 ### 1.2 Current state assessment (Phase 0 input)
-The repository is a ~309-line **throwaway alpha prototype**, conceptually useful but **not an
-architectural foundation**:
+The repository is a ~309-line **early-stage prototype** — useful as a statement of intent, but **not
+yet an architectural foundation**:
 
 | Problem | Evidence | Impact |
 |---|---|---|
