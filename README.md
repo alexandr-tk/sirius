@@ -38,7 +38,7 @@ Drones are represented as a single Point Cloud (data backbone) with instanced vi
 
 ## Requirements
 
-- Blender 5.0 or newer (developed against the 5.1 alpha)
+- Blender 4.5 LTS or newer
 - Python 3.11+
 
 ## Installation

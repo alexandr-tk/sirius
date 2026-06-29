@@ -1,7 +1,7 @@
 # Sirius — Architectural Project Plan
 
 > Open-source Blender add-on for designing professional drone light-show animations and exporting
-> them to real-world drone-control formats. Target: **Blender 5.x** (latest alpha, manual at 5.1).
+> them to real-world drone-control formats. Target: **Blender 4.5 LTS** (current LTS, supported through July 2027).
 > License: MIT. Status of this document: **developer-ready architectural roadmap** (planning only).
 
 ---
@@ -12,7 +12,7 @@ Per the project-roadmap-architect protocol, the end-to-end user-workflow section
 strategy (§7) are normally delegated to dedicated sub-agents (`@usecase-architect`,
 `@test-suite-architect`). In this environment those agents are not available as discrete tools, so
 this document **integrates those sections directly**, produced by the architect role and grounded
-entirely in the verified facts of the project brief (domain model, export specs, Blender 5.x API
+entirely in the verified facts of the project brief (domain model, export specs, Blender 4.5 LTS API
 constraints) plus the authoritative sources cited inline. Every non-obvious API recommendation was
 checked against the current Blender manual / API docs (no deprecated APIs are proposed). If the user
 later runs a change through a real `@usecase-architect` / `@test-suite-architect` pass, only §6 and
@@ -22,9 +22,11 @@ later runs a change through a real `@usecase-architect` / `@test-suite-architect
 - Read every file in the current repo (confirms the blocking `ImportError`, `bpy.ops`-in-loop,
   one-material-per-drone, and the two `pass` stubs).
 - Confirmed the **VVIZ** spec against `https://docs.verge.aero/drone-show-software/verge-design-studio/vviz-format`.
-- Confirmed Blender 5.1 manual pages for **Point Cloud** (`/modeling/point_cloud/`), **Geometry
-  Nodes** features (Node-Based Tools, Gizmos, Baking, Import nodes CSV/OBJ/PLY/STL/TXT/VDB), the
-  **Extensions** getting-started page, and editors (Dope Sheet / Graph Editor / NLA / VSE).
+- Confirmed Blender 4.5 LTS (released 2025-07-15, supported through July 2027) manual / release-notes
+  pages for **Point Cloud** (`/modeling/point_cloud/`, incl. dedicated edit mode), **Geometry
+  Nodes** features (Node-Based Tools, Gizmos, Baking, Import nodes CSV/OBJ/PLY/STL/TXT/VDB — all
+  shipped in 4.5 LTS), the **Extensions** getting-started page, and editors (Dope Sheet / Graph
+  Editor / NLA / VSE).
 
 ---
 
@@ -162,7 +164,7 @@ sirius/
 
 ---
 
-## 2. Verified Blender 5.x API Decisions (non-deprecated building blocks)
+## 2. Verified Blender 4.5 LTS API Decisions (non-deprecated building blocks)
 
 Every subsystem below uses **current** APIs only. The single most important deprecation to avoid:
 **`bgl` was removed in Blender 4.0+.** All viewport drawing uses the `gpu` module.
@@ -180,7 +182,7 @@ name = "Sirius"
 tagline = "Design drone light-show animations and export to flight-ready formats"
 maintainer = "Alexandr Tkachyov"
 type = "add-on"
-blender_version_min = "5.0.0"
+blender_version_min = "4.5.0"
 tags = ["3D View", "Animation", "Import-Export"]
 license = ["SPDX:MIT"]
 permissions = { files = "Export show data (CSV/VVIZ/UgCS/Vimdrones) to disk" }
@@ -217,10 +219,11 @@ with the depsgraph. Key nodes: **Distribute Points on Faces** (scatter on meshes
 **Resample Curve** (even spacing on splines), **String to Curves** (text/logos), **Instance on
 Points** (LED proxies), **Store Named Attribute** (write `drone_id`/`color`).
 
-Blender 5.x Geometry Nodes also gives us **Node-Based Tools**, **Gizmos** (linear/dial/transform),
-**Baking**, and **Import nodes** (CSV/OBJ/PLY/STL/TXT/VDB) — leverage Import→CSV for reference
-trajectories and Node Tools as interactive formation editors. A **"Scatter on Surface" modifier**
-also exists as a built-in primitive.
+Blender 4.5 LTS Geometry Nodes also gives us **Node-Based Tools**, **Gizmos** (linear/dial/transform),
+**Baking**, and **Import nodes** (CSV/OBJ/PLY/STL/TXT/VDB, all confirmed shipped in 4.5 LTS) —
+leverage Import→CSV for reference trajectories and Node Tools as interactive formation editors.
+Formation scatter uses our own **Distribute Points on Faces** node group (we do not rely on any
+bundled scatter-asset modifier).
 
 ```python
 # Illustrative: read evaluated swarm positions
@@ -351,7 +354,7 @@ vs. instanced mesh) behind `swarm_object.py`.
 
 **DoD:** user can turn any mesh/curve/text object into a formation with a density slider and a
 spacing constraint; drones auto-assign to nearest slots; overflow drones go to the overflow shape.
-**Risk:** GeoNodes API drift across 5.x alphas → pin tested node-tree templates in `assets/`.
+**Risk:** GeoNodes node-tree differences between Blender versions → pin tested node-tree templates in `assets/` (4.5 LTS API is frozen for the LTS series, so this risk is low).
 **Test milestone:** T1 (formation sampling, Hungarian correctness vs. brute force on small N).
 
 ### Phase 2 — Animation & LED
@@ -435,7 +438,7 @@ its documented constraints and treat the golden-file diff as that format's fidel
 - Graceful degradation (Progressive/Reduced modes), error handling, logging.
 - Extension-platform packaging (tagged release, screenshots), v1.0.
 
-**DoD:** installable Extension; passes full test matrix on Blender 5.1; 1000-drone show authored,
+**DoD:** installable Extension; passes full test matrix on Blender 4.5 LTS; 1000-drone show authored,
 validated, and exported; documented.
 
 ---
@@ -631,7 +634,13 @@ touched**, and **acceptance criteria**. These double as integration-test narrati
    if absent, transparently fall back to a bundled pure-Python Hungarian. Both paths are unit-tested
    against brute force, so correctness is identical regardless of whether scipy is installed.
 2. **Primary swarm representation — Point Cloud (data backbone) + Instance-on-Points (visual skin), single shared LED material.** Confirmed.
-3. **Minimum Blender version — `blender_version_min = "5.0.0"`** (developed against the 5.1 alpha). No 4.x support. Confirmed.
+3. **Minimum Blender version — `blender_version_min = "4.5.0"` (LTS).** Developed against Blender 4.5
+   LTS (released 2025-07-15, supported with fixes through July 2027). Every required feature is
+   present in 4.5 LTS: `gpu` module, Extensions `blender_manifest.toml`, Point Cloud object + edit
+   mode, Geometry Nodes (Distribute/Resample/String-to-Curves/Instance/Store-Attribute + Import
+   nodes / Node Tools / Gizmos / Baking), `depsgraph`/`msgbus`, `mathutils.kdtree`/`bvhtree`. Choosing
+   the LTS (over a moving 5.x alpha) gives a stable API and the widest install base. No support for
+   releases older than 4.5. Confirmed.
 4. **UgCS PATH3 — full writer now (NOT behind an experimental flag).** Implemented as a complete,
    first-class export target alongside PATH, encoding to the documented PATH3 constraints.
 5. **Depence format — full launch target now.** Treated as a first-class writer from the start (the
