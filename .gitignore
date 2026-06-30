@@ -90,3 +90,4 @@ opencode.json
 .env
 .env.*
 *.log
+next-milestone.md
