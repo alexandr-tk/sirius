@@ -64,13 +64,4 @@ class DroneShowSettings(bpy.types.PropertyGroup):
         default=5.0,
         min=0.0,
         max = 100.0
-    )
-
-
-def register():
-    bpy.utils.register_class(DroneShowSettings) 
-    bpy.types.Scene.my_props = bpy.props.PointerProperty(type=DroneShowSettings)
-
-def unregister():
-    del bpy.types.Scene.my_props
-    bpy.utils.unregister_class(DroneShowSettings) 
+    ) 

@@ -1,5 +1,4 @@
-from . import panels, operators, props, materials
-
+from .blender import registry
 
 bl_info = {
     "name": "Sirius",
@@ -11,16 +10,9 @@ bl_info = {
     "category": "Object"
 }
 
-
 def register():
-    props.register()
-    operators.register()
-    panels.register()
-    
-
+    registry.register()
 
 def unregister():
-    props.unregister()
-    operators.unregister()
-    panels.unregister()
+    registry.unregister()
     
