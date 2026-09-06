@@ -2,13 +2,13 @@
 
 ![Sirius](assets/logo.png)
 
-Open-source drone light-show animation tool for Blender. Design formations and flight paths of any complexity, validate them for safe flight, and export to the data formats used by modern drone-control software.
+An early Blender add-on for drone-show design. The current prototype creates takeoff grids and changes drone LED colors. Animation, transition planning, flight-constraint checks, and export are planned.
 
 **Status:** Alpha — under active development. See [project-plan.md](project-plan.md) for the full roadmap.
 
 ## Overview
 
-Sirius brings professional drone-show choreography into the Blender viewport. It bridges artistic animation and hardware deployment: generate formations from arbitrary 3D objects, animate drones and their LEDs, compute safe transitions between formations, validate against real-world flight constraints, and export for real shows.
+The long-term goal is to design, animate, check, and export drone shows inside Blender. The current code is a grid-and-color prototype; it cannot yet produce or validate flight files.
 
 ## Features
 
@@ -25,37 +25,39 @@ Sirius brings professional drone-show choreography into the Blender viewport. It
 - Parametric takeoff grid generation
 - Per-drone LED color and emission control
 
-## Architecture
+## Planned architecture
 
-A layered design keeps the hard logic testable and Blender-version-isolated:
+The roadmap separates algorithms from Blender integration:
 
 - **Core** — bpy-free data model and algorithms (assignment, collision, feasibility, interpolation, coordinate conversion)
 - **Blender adapter** — thin `bpy` integration (swarm object, Geometry Nodes, handlers, viewport drawing via the `gpu` module)
 - **Exporters** — format-agnostic trajectory sampler with one writer per target format
 - **UI** — sidebar panels, operators, property groups
 
-Drones are represented as a single Point Cloud (data backbone) with instanced visual proxies and one shared LED material, driven by Geometry Nodes for formation generation and native F-Curves/NLA for animation.
+The target representation is a single Point Cloud with instanced proxies and a shared LED material. The current grid operator creates a separate mesh object and material for each drone; the core and exporter packages are placeholders.
 
 ## Requirements
 
 - Blender 4.5 LTS or newer
-- Python 3.11+
+- Use the Python runtime bundled with Blender; this add-on imports `bpy`.
 
 ## Installation
 
-1. Download the latest release `.zip`.
+1. Build a source package from the repository root with `blender --command extension build`. No release ZIP is currently published. See the [Blender extension build documentation](https://docs.blender.org/manual/en/4.5/advanced/command_line/extension_arguments.html).
 2. In Blender, open **Edit → Preferences → Get Extensions → Install from disk** and select the `.zip`.
 3. Enable **Sirius**.
 
-## Export Formats
+## Planned export formats
 
 | Format | Type | Target stack |
 | --- | --- | --- |
-| CSV | Flight-ready | Generic |
-| Vimdrones raw | Flight-ready | Vimdrones GCS |
-| UgCS PATH / PATH3 | Flight-ready | SPH Engineering Drone Show Software |
+| CSV | Trajectory data | Generic |
+| Vimdrones raw | Control-format target | Vimdrones GCS |
+| UgCS PATH / PATH3 | Control-format target | SPH Engineering Drone Show Software |
 | VVIZ | Visualization/interchange | Verge Aero, Finale3D, Depence, FWSim |
 | Depence | Visualization | Syncronorm Depence |
+
+None of these exporters is implemented yet. Format output and model-based constraint checks will require validation against the target control software and aircraft before operational use.
 
 ## Roadmap
 
@@ -70,11 +72,11 @@ The plan is phased around a minimum end-to-end MVP (create → animate → trans
 - **Phase 6** — Accelerators (geo-referencing, pyro, music sync, flocking, import round-trip) — post-MVP
 - **Phase 7** — Polish and release
 
-Full details, including verified Blender API decisions and the test strategy, are in [project-plan.md](project-plan.md).
+Full details, including proposed Blender API choices and the test strategy, are in [project-plan.md](project-plan.md).
 
 ## Contributing
 
-Contributions are welcome. Pick an open issue labeled `phase-N` or `good first issue`, and read [project-plan.md](project-plan.md) for architecture and conventions before starting. Core algorithm and exporter modules are pure Python and unit-testable without Blender.
+Contributions are welcome. Pick an open issue labeled `phase-N` or `good first issue`, and read [project-plan.md](project-plan.md) for architecture and conventions before starting. The planned core algorithms and exporters should be testable without Blender; their implementation and tests are still to be written.
 
 ## License
 

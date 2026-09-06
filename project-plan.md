@@ -19,11 +19,10 @@ land.
 - **[R] / [F] / [N]** in the phase tables mark whether a module is rebuilt from scratch, fixed/ported
   from the prototype, or newly written (§4).
 - Code identifiers, file paths, and Blender API names are written in `monospace`.
-- Every API recommendation targets a current, non-deprecated Blender 4.5 LTS API. The
+- API recommendations target Blender 4.5 LTS and must be checked against that version during implementation. The
   deprecated-API avoid-list is §8.
 
-**Primary references.** Every API and format decision in this plan is grounded in the following
-authoritative sources:
+**Reference sources.** Use the following documentation to verify API and format decisions during implementation:
 - **Blender 4.5 LTS manual and Python API** — Extensions (`blender_manifest.toml`), Point Cloud
   objects, Geometry Nodes (Node-Based Tools, Gizmos, Baking, Import nodes), the `gpu` module,
   `depsgraph`/`msgbus`, `mathutils.kdtree`/`bvhtree`, and the Dope Sheet / Graph Editor / NLA / VSE
@@ -31,17 +30,14 @@ authoritative sources:
 - **Export-format specifications** — Verge Aero **VVIZ**
   (`https://docs.verge.aero/drone-show-software/verge-design-studio/vviz-format`), SPH Engineering
   **UgCS PATH / PATH3**, **Vimdrones** raw, and **Syncronorm Depence**.
-- **The current repository**, audited in full to produce the Phase 0 remediation list (§1.2).
+- **The prototype repository**, used for the Phase 0 assessment (§1.2). Check the code before acting on that assessment; the import typo recorded there has since been fixed.
 
 ---
 
 ## 1. Executive Summary & Architecture Overview
 
 ### 1.1 Vision & success bar
-Sirius must let anyone author drone-show animations of arbitrary complexity inside Blender and
-export them to the data formats consumed by real drone-control stacks. The credibility bar is "an
-open alternative to Verge Aero Design Studio / SPH Engineering Drone Show Creator / Vimdrones
-Designer." Concrete success criteria:
+Sirius aims to support drone-show authoring in Blender and export to selected control formats. The following are development targets, not current capabilities:
 
 - Generate formations of **N drones** (scale target **~1000**) from arbitrary Blender 3D objects.
 - Animate per-drone **position** and **LED color** (RGB/RGBW) over time, synced to the timeline.
@@ -52,13 +48,12 @@ Designer." Concrete success criteria:
 - Ship as a modern **Blender Extension** (`blender_manifest.toml`), MIT, documented, tested.
 
 ### 1.2 Current state assessment (Phase 0 input)
-The repository is a ~309-line **early-stage prototype** — useful as a statement of intent, but **not
-yet an architectural foundation**:
+The original assessment covered a roughly 309-line prototype. The code now has package placeholders and the import correction below, but the planned core algorithms and exporters remain unimplemented:
 
 | Problem | Evidence | Impact |
 |---|---|---|
-| **Blocking import bug** | `materials/__init__.py` imports `configure_lighting_copositing` (typo, missing `m`); the defined function is `configure_lighting_compositing` | Add-on fails to **enable** as-is |
-| **Doesn't scale** | `operators/create_takeoff_grid.py` calls `bpy.ops.mesh.primitive_uv_sphere_add(...)` in a nested loop, one mesh object **and** one material per drone | O(N) ops calls + O(N) materials → unusable past ~100 drones, context-fragile |
+| **Import typo (fixed)** | `materials/__init__.py` now imports the defined `configure_lighting_compositing` function | Retain an enable/disable check when restructuring |
+| **Per-drone object overhead** | `operators/create_takeoff_grid.py` calls `bpy.ops.mesh.primitive_uv_sphere_add(...)` in a nested loop, one mesh object **and** one material per drone | O(N) operator calls + O(N) materials; the practical drone-count limit needs a benchmark |
 | **No domain model** | `props.py` only has grid dimensions + color; no Formation/Drone/Show/Transition concepts | Cannot represent a real show |
 | **No animation system** | No keyframes, no timeline integration, color only as a static material tweak | Cannot author motion or synced LEDs |
 | **No transitions / collision / feasibility** | `utils/pathfinding.py` is a `pass` stub | Core value missing |
@@ -546,7 +541,7 @@ touched**, and **acceptance criteria**. These double as integration-test narrati
 - **Acceptance:** transitions are non-crossing and within vmax/amax; colors change on beat frames.
 
 ### UC-4 — Feasibility-checked & exported to a vendor format
-- **Actor:** pilot/operator. **Goal:** a flight-ready file the field can fly.
+- **Actor:** pilot/operator. **Goal:** a file suitable for validation in the target control stack. Passing the software checks alone does not establish flight safety.
 - **Steps:** *Validate* (Phase 4) → review violation report + viewport highlights → fix spacing/speed
   → choose format (Vimdrones/UgCS/VVIZ) → set sample rate + geo-ref → *Export*.
 - **Acceptance:** zero violations at export; output passes the golden-file check; UgCS file ≤4 fps
@@ -634,23 +629,20 @@ touched**, and **acceptance criteria**. These double as integration-test narrati
 ## 9. Confirmed Decisions (locked)
 
 1. **Hungarian algorithm — `scipy.optimize.linear_sum_assignment`, lazy-loaded + pure-Python fallback.**
-   scipy is the most optimal, best-documented, and easiest-to-test choice, so it is the primary path.
-   It is **not vendored** (keeps the Extension light); at runtime we try `import scipy.optimize` and,
-   if absent, transparently fall back to a bundled pure-Python Hungarian. Both paths are unit-tested
-   against brute force, so correctness is identical regardless of whether scipy is installed.
+   Use scipy as the primary assignment implementation when available.
+   Do not vendor scipy; try `import scipy.optimize` at runtime and,
+   if absent, fall back to a bundled pure-Python Hungarian implementation. Both paths must be tested
+   against brute force before claiming equivalent results; neither implementation is present yet.
 2. **Primary swarm representation — Point Cloud (data backbone) + Instance-on-Points (visual skin), single shared LED material.** Confirmed.
-3. **Minimum Blender version — `blender_version_min = "4.5.0"` (LTS).** Developed against Blender 4.5
-   LTS (released 2025-07-15, supported with fixes through July 2027). Every required feature is
-   present in 4.5 LTS: `gpu` module, Extensions `blender_manifest.toml`, Point Cloud object + edit
-   mode, Geometry Nodes (Distribute/Resample/String-to-Curves/Instance/Store-Attribute + Import
-   nodes / Node Tools / Gizmos / Baking), `depsgraph`/`msgbus`, `mathutils.kdtree`/`bvhtree`. Choosing
-   the LTS (over a moving 5.x alpha) gives a stable API and the widest install base. No support for
-   releases older than 4.5. Confirmed.
-4. **UgCS PATH3 — full writer now (NOT behind an experimental flag).** Implemented as a complete,
-   first-class export target alongside PATH, encoding to the documented PATH3 constraints.
-5. **Depence format — full launch target now.** Treated as a first-class writer from the start (the
+3. **Minimum Blender version — `blender_version_min = "4.5.0"` (LTS).** The manifest targets Blender 4.5
+   LTS (released 2025-07-15, supported with fixes through July 2027). Verify the planned APIs in
+   that version, especially Point Cloud editing and the proposed Geometry Nodes operations,
+   before relying on them. The minimum-version declaration is not proof that every roadmap
+   feature is available or tested. No support for releases older than 4.5. Confirmed.
+4. **UgCS PATH3 — planned MVP writer (NOT behind an experimental flag).** Implement alongside PATH and validate against the documented PATH3 constraints; the writer is not implemented yet.
+5. **Depence format — planned launch target.** Treat as a first-class writer from the start (the
    least-documented of the five, so its golden-file test is the acceptance gate for its fidelity).
-6. **Pyro payloads — modeled AND fully authored now (model + authoring UI).** Because pyro is not
+6. **Pyro payloads — planned model and authoring UI.** Because pyro is not
    required to produce end-to-end *animations*, it is scheduled in the **post-MVP accelerator phase
    (Phase 6)** — but when built there it is a complete feature (data model + UI), not deferred.
 7. **Geo-referencing — local ENU (East-North-Up) tangent-plane / flat-earth approximation, anchored
@@ -660,7 +652,7 @@ touched**, and **acceptance criteria**. These double as integration-test narrati
    (matches the VVIZ `globalReferenceFrame` and UgCS conventions). Full UTM/MGRS is NOT pursued.
    The **minimal origin anchor** lives in the **MVP export phase** (Phase 5, needed for VVIZ/Depence
    `globalReferenceFrame`); richer geo-ref tooling (map anchor picker, CRS presets) is Phase 6.
-8. **Music sync — included now as a full (not cut) feature, scheduled post-MVP (Phase 6)** per the
+8. **Music sync — planned full feature, scheduled post-MVP (Phase 6)** per the
    MVP rule (not required to produce an animation end-to-end). Implements VSE audio-lane cues +
    `eventTags`; full beat-detection remains optional/later.
 
@@ -686,7 +678,7 @@ phases move from *stabilize → generate → animate → transition → validate
 Phases 0–5) then *accelerate → polish* (post-MVP, Phases 6–7), each with explicit deliverables,
 dependencies, risks, and a test milestone. The export engine is format-agnostic at its core (unified
 `TrajectorySample` sampler) with one writer per real-world format — **CSV, Vimdrones, UgCS PATH and
-PATH3, VVIZ, Depence** — encoding exactly per the verified specs, with ENU geo-anchoring and an
+PATH3, VVIZ, Depence** — to be validated against target specifications, with ENU geo-anchoring and an
 export sample rate decoupled from the viewport fps.
 
 **Next action for the implementer:** all §9 decisions are locked — begin **Phase 0**.
