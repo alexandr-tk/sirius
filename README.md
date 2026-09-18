@@ -1,6 +1,6 @@
-<img src="assets/logo.png" alt="Sirius logo" width="96" height="96" align="right">
-
 # Sirius
+
+<img src="assets/logo.png" alt="Sirius logo" width="96" height="96" align="right">
 
 Open-source drone-show design, lighting, and production tools for Blender.
 
