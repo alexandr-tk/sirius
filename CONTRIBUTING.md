@@ -17,9 +17,11 @@ system, architecture, and bundled Python version when testing. A host Python
 virtual environment can run pure numerical tests once that harness exists; it
 does not replace testing Blender integration in Blender itself.
 
-The test harness and release packaging procedure are not implemented yet. M0
-establishes them. Use Blender's documented extension build/validation mechanism
-on a reviewed staging directory containing the intended source and assets.
+The test harness, add-on CI, and release packaging procedure are not implemented
+yet. M0 establishes them through the [testing and CI plan](docs/testing-and-ci.md).
+It defines local checks, pull-request checks, test fixtures, and release evidence.
+Use Blender's documented extension build/validation mechanism on a reviewed
+staging directory containing the intended source and assets.
 Inspect the resulting archive: Git ignore rules alone do not control its contents.
 Exclude private notes, virtual environments, caches, source-control metadata,
 temporary output, and third-party assets that are not licensed for distribution.
@@ -29,6 +31,13 @@ temporary output, and third-party assets that are not licensed for distribution.
 Keep each change focused on one observable behavior. Describe the problem, the
 result, and the verification performed. Include a small reproduction for a bug
 and identify checks that were not run.
+
+Once M0 establishes the check commands, run the relevant checks locally before
+opening a pull request. GitHub Actions will run the required checks again; branch
+rules must require their success before merge. Optional local Git hooks can catch
+mistakes earlier, but contributors must not need a hook to run the same checks.
+Manual Blender and receiver observations supplement automated results. Record
+the build, steps, and outcome whenever a check cannot run in CI.
 
 Pure show data and numerical behavior must remain independent of Blender. UI and
 scene adapters may use Blender APIs. Preserve stable drone identity, explicit

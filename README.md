@@ -1,6 +1,6 @@
 # Sirius
 
-![Sirius](assets/logo.png)
+<img src="assets/logo.png" alt="Sirius logo" width="96" height="96" align="right">
 
 Open-source drone-show design, lighting, and production tools for Blender.
 
@@ -79,6 +79,7 @@ be tested independently of the interface.
 - [Architecture and data ownership](docs/architecture.md)
 - [Lighting and render workflows](docs/lighting-and-preview.md)
 - [Validation, export, and interoperability](docs/validation-and-export.md)
+- [Testing, continuous integration, and release checks](docs/testing-and-ci.md)
 - [Performance and workflow evaluation](docs/performance-and-evaluation.md)
 - [Research and source references](docs/research.md)
 - [Decisions and open questions](docs/decisions.md)

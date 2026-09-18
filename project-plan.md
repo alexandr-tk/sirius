@@ -95,6 +95,8 @@ Read [architecture](docs/architecture.md) for data ownership,
 and [validation and export](docs/validation-and-export.md) for correctness gates.
 Use [performance and evaluation](docs/performance-and-evaluation.md) for benchmark
 fixtures, comparison conditions, and measured acceptance criteria.
+Use [testing and CI](docs/testing-and-ci.md) for local checks, pull-request gates,
+fixture files, and scheduled/release coverage.
 The [decision register](docs/decisions.md) separates recommendations from choices
 that still require an experiment or maintainer decision.
 
@@ -123,17 +125,31 @@ Work in separate changes:
    submission. Do not change the license merely to silence a packaging error.
 5. Add the first meaningful regression tests and a minimal test runner. Make it
    possible to import pure modules without the package importing `bpy` first.
-   Keep ordinary Python tests separate from Blender integration tests.
-6. Remove tracked bytecode. Record a clean install/enable/disable/re-enable test.
+   Keep ordinary Python tests separate from Blender integration tests. Start with
+   a small known defect and a hand-checked example; prove each test detects its
+   intended failure before using it as evidence for a repair.
+6. Document repeatable local check commands, then run those same checks through
+   GitHub Actions on pull requests and pushes to `main`. Add formatting/lint
+   checks, pure-Python tests, a small real-Blender regression suite, and extension
+   build/validation plus a clean-profile package-install smoke test. Implement
+   this in small changes after the first local tests work.
+7. Require the established CI checks in branch protection or a ruleset. Verify
+   that a deliberately failing PR is blocked by its required check and its
+   corrected revision passes. Check the docs-only path too; missing, skipped,
+   or empty test runs must not conceal a failure. Keep local Git hooks optional.
+8. Remove tracked bytecode. Record a clean install/enable/disable/re-enable test.
    Align the manifest and README with actual tested versions, initially 5.2 LTS.
 
 **Learning:** imports, side effects, resource ownership, exceptions, small tests,
-and Blender's registration/undo lifecycle.
+continuous integration, and Blender's registration/undo lifecycle.
 
 **Exit evidence:** a saved reproduction and verification record; no destructive
 compositor edits during grid creation; meaningful error behavior; an installable
-development package with an inspected file list. No compatibility claim for a
-build that was not exercised. Verify file-system behavior in a disposable folder.
+development package with an inspected file list; documented local checks and
+observed passing CI on the primary build; and evidence that a failing required
+check blocks merging. Record UI checks that still need a manual Blender session.
+No compatibility claim for a build that was not exercised. Verify file-system
+behavior in a disposable folder. CI configuration alone does not complete M0.
 
 ## M1 — Give a show identity, time, and persistence
 
@@ -455,7 +471,9 @@ excluded. **Outcome:** a release a professional team can evaluate and support.
   behavior; consistent units, labels, and error messages.
 - Test supported Blender/OS combinations, fresh profiles, upgrades, old project
   migrations, missing assets, offline use, cancellation, interrupted writes, and
-  long-running sessions. Maintain a current-release compatibility process.
+  long-running sessions. Run the [release checks](docs/testing-and-ci.md#scheduled-and-release-checks)
+  against the release commit and packaged artifact; retain automated results and
+  required manual/receiver records. Maintain a current-release compatibility process.
 - Release through reproducible packages with notices, changelog, artifact hashes,
   dependency inventory, known issues, and a documented support/security-reporting
   route. Establish review, release ownership, deprecation, and maintenance policy.
@@ -494,6 +512,9 @@ and a small design decision before implementation.
 Implement one behavior at a time. Pair it with an observable example and a test
 where failure would matter. Keep pure numerical tests, Blender integration,
 receiver conformance, and operator qualification as separate evidence.
+Add regression cases with each relevant feature or repair. The M0 test harness
+grows with the product; M9 and M10 expand coverage rather than introduce testing
+for the first time.
 
 Before a milestone starts, choose its next small task from current code and
 prerequisites. Do not generate an entire directory tree or hundreds of tickets

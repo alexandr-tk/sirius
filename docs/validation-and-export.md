@@ -163,6 +163,10 @@ code and must be presented as such.
 
 ## Verification strategy
 
+The [testing and CI plan](testing-and-ci.md) specifies where these checks run,
+how fixtures are maintained, and which results block a merge or release. Add
+checks as each behavior is implemented, beginning in M0.
+
 **Pure numerical tests:** hand-computed cases, invariants, property-based cases
 where useful, and independent small oracles. Test units/time/IDs, effects,
 assignment cost, interpolation, interval separation, and conversion errors.
