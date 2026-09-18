@@ -123,6 +123,12 @@ A speedup is accepted only with its correctness/fidelity checks and a documented
 tradeoff where behavior changes. Set a meaningful comparison margin before the
 experiment, based on measurement variation and the designer's practical benefit.
 
+Keep small deterministic correctness checks in pull-request CI. Run larger
+benchmarks on a schedule and before release, following the
+[testing and CI plan](testing-and-ci.md#scheduled-and-release-checks). Use a
+recorded reference machine for timing comparisons; noisy shared-runner timings
+are diagnostic evidence until a repeatable regression threshold is established.
+
 ## Adoption evidence
 
 At M3 begin observing a designer complete a small task. At M8–M10 have external

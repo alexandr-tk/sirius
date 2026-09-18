@@ -16,7 +16,12 @@ enable, UI, render, or export test was performed during the planning revision.
 | Materials | [`materials/__init__.py`](../materials/__init__.py) | The import typo mentioned by the previous plan is already fixed |
 | Package layout | `core/`, `algorithms/`, `exporters/`, `ui/` | Empty package markers, not implemented subsystems |
 | Export and planning | [`operators/export_csv.py`](../operators/export_csv.py), [`utils/pathfinding.py`](../utils/pathfinding.py) | Unregistered export function and trajectory stub, both containing `pass` |
-| Quality infrastructure | Tracked-file inventory | No tests, CI workflow, reference shows, benchmarks, or reproducible package procedure |
+| Quality infrastructure | Tracked-file inventory and GitHub workflow listing | No add-on tests or CI, reference shows, benchmarks, or reproducible package procedure; the hosted Pages workflow only deploys the website |
+
+The [testing and CI plan](testing-and-ci.md) adds explicit M0 requirements for
+local test commands, automated pull-request checks, and merge enforcement.
+These are planned work; publishing the plan does not install a test harness or
+configure required checks.
 
 ## Problems to reproduce and address
 
