@@ -2,82 +2,89 @@
 
 ![Sirius](assets/logo.png)
 
-An early Blender add-on for drone-show design. The current prototype creates takeoff grids and changes drone LED colors. Animation, transition planning, flight-constraint checks, and export are planned.
+Open-source drone-show design, lighting, and production tools for Blender.
 
-**Status:** Alpha — under active development. See [project-plan.md](project-plan.md) for the full roadmap.
+Sirius is being built for the full design workflow: create formations, choreograph
+movement, animate LEDs, preview the show, check constraints, and prepare exports
+for other production tools. The priorities are expressive lighting, useful render
+previews, and a local workflow whose algorithms and file formats can be inspected.
 
-## Overview
+The project will develop its own Blender authoring tools and an open computational
+core for planning, validation, and export. Essential functions will run locally
+without an account, proprietary solver, or drone-count license tier. Compatibility
+with other show tools will be added through documented adapters.
 
-The long-term goal is to design, animate, check, and export drone shows inside Blender. The current code is a grid-and-color prototype; it cannot yet produce or validate flight files.
+**Status: early prototype.** The source contains a takeoff-grid generator and
+static LED controls. Animation, trajectory planning, validation, render presets,
+and exporters remain to be implemented. No output is qualified for flight use.
 
-## Features
+## Planned workflow
 
-**Planned (MVP)**
-- Scalable swarm representation (Point Cloud + instances) for 1,000+ drones
-- Takeoff grid / launchpad generation
-- Formation generation from any mesh, curve, text, or logo with density and spacing control
-- Per-drone and group LED color animation on the timeline
-- Automatic formation-to-formation transitions (optimal slot assignment + velocity-profiled motion)
-- Collision and feasibility validation (spacing, speed, acceleration, geofence, altitude) with live viewport feedback
-- Multi-format export with coordinate-frame and sample-rate conversion
+- Create formations from curves, text, logos, meshes, and reusable assets.
+- Design LED animation with layered effects, moving mask objects, gradients,
+  image projection, groups, and cues tied to the show timeline.
+- Plan transitions, takeoff, and landing against explicit fleet and site limits.
+- Preview a frame or a complete show with cameras, scenery, exposure, and LED
+  appearance presets suitable for client review and marketing.
+- Inspect validation results and export a reproducible package for a named
+  downstream application and version.
 
-**Implemented**
-- Parametric takeoff grid generation
-- Per-drone LED color and emission control
+These are development goals. The [project plan](project-plan.md) defines the
+milestones and the evidence needed to call each feature complete.
 
-## Planned architecture
+## Blender support
 
-The roadmap separates algorithms from Blender integration:
+Development is planned around **Blender 5.2 LTS**. Blender's
+[release listing](https://www.blender.org/releases/) identifies 5.2 and 4.5 as
+maintained LTS releases as of September 18, 2026.
 
-- **Core** — bpy-free data model and algorithms (assignment, collision, feasibility, interpolation, coordinate conversion)
-- **Blender adapter** — thin `bpy` integration (swarm object, Geometry Nodes, handlers, viewport drawing via the `gpu` module)
-- **Exporters** — format-agnostic trajectory sampler with one writer per target format
-- **UI** — sidebar panels, operators, property groups
+The current manifest still declares a 4.5 minimum. That metadata is not a tested
+compatibility matrix: the prototype needs changes for Blender 5.x, including its
+compositor integration. Milestone M0 establishes a verified development build and
+updates the metadata. Support for additional versions will be listed only after
+testing. See the [source audit](docs/current-state.md).
 
-The target representation is a single Point Cloud with instanced proxies and a shared LED material. The current grid operator creates a separate mesh object and material for each drone; the core and exporter packages are placeholders.
+## Export plans
 
-## Requirements
-
-- Blender 4.5 LTS or newer
-- Use the Python runtime bundled with Blender; this add-on imports `bpy`.
-
-## Installation
-
-1. Build a source package from the repository root with `blender --command extension build`. No release ZIP is currently published. See the [Blender extension build documentation](https://docs.blender.org/manual/en/4.5/advanced/command_line/extension_arguments.html).
-2. In Blender, open **Edit → Preferences → Get Extensions → Install from disk** and select the `.zip`.
-3. Enable **Sirius**.
-
-## Planned export formats
-
-| Format | Type | Target stack |
+| Target | Intended use | Status |
 | --- | --- | --- |
-| CSV | Trajectory data | Generic |
-| Vimdrones raw | Control-format target | Vimdrones GCS |
-| UgCS PATH / PATH3 | Control-format target | SPH Engineering Drone Show Software |
-| VVIZ | Visualization/interchange | Verge Aero, Finale3D, Depence, FWSim |
-| Depence | Visualization | Syncronorm Depence |
+| Sirius JSON and CSV | Documented interchange, debugging, and round-trip tests | Planned first |
+| VVIZ | Visualization in compatible applications | Planned |
+| Skybrush SKYC | Handoff to the Skybrush toolchain | Research candidate |
+| SPH PATH / PATH3 | Handoff to Drone Show Software | Research candidates |
+| Vimdrones | Handoff to a documented Vimdrones workflow | Research candidate |
+| Depence Show Stream | Production visualization | Research candidate |
 
-None of these exporters is implemented yet. Format output and model-based constraint checks will require validation against the target control software and aircraft before operational use.
+No exporter is implemented. A file extension or a successful write does not
+establish compatibility. Each adapter needs a format reference, representative
+files, and tests in its receiving application. The
+[validation and export plan](docs/validation-and-export.md) records these gates.
 
-## Roadmap
+## Development
 
-The plan is phased around a minimum end-to-end MVP (create → animate → transition → validate → export), followed by accelerators and polish.
+Start with the [current state](docs/current-state.md), then the
+[architecture](docs/architecture.md) and [contribution guide](CONTRIBUTING.md).
+The repository does not yet provide a verified release package or test harness.
+Use a disposable Blender file when exploring the prototype; grid creation
+currently changes scene compositing settings.
 
-- **Phase 0** — Stabilize, restructure, scalable foundation
-- **Phase 1** — Launchpad and formation generation
-- **Phase 2** — Animation and LED
-- **Phase 3** — Transitions and assignment
-- **Phase 4** — Collision and feasibility validation
-- **Phase 5** — Export engine
-- **Phase 6** — Accelerators (geo-referencing, pyro, music sync, flocking, import round-trip) — post-MVP
-- **Phase 7** — Polish and release
+The planned core handles show data, lighting, validation, and file conversion
+without depending on Blender. The Blender integration supplies authoring tools,
+scene evaluation, and previews. This separation will allow numerical behavior to
+be tested independently of the interface.
 
-Full details, including proposed Blender API choices and the test strategy, are in [project-plan.md](project-plan.md).
+## Documentation
 
-## Contributing
-
-Contributions are welcome. Pick an open issue labeled `phase-N` or `good first issue`, and read [project-plan.md](project-plan.md) for architecture and conventions before starting. The planned core algorithms and exporters should be testable without Blender; their implementation and tests are still to be written.
+- [Roadmap and release criteria](project-plan.md)
+- [Architecture and data ownership](docs/architecture.md)
+- [Lighting and render workflows](docs/lighting-and-preview.md)
+- [Validation, export, and interoperability](docs/validation-and-export.md)
+- [Performance and workflow evaluation](docs/performance-and-evaluation.md)
+- [Research and source references](docs/research.md)
+- [Decisions and open questions](docs/decisions.md)
 
 ## License
 
-[MIT](LICENSE)
+The repository is currently licensed under [MIT](LICENSE). The licensing decision
+for distribution through Blender's official Extensions Platform remains open;
+see [D03](docs/decisions.md#d03-distribution-license).

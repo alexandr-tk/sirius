@@ -1,684 +1,502 @@
-# Sirius — Architectural Project Plan
+# Sirius project plan
 
-> Open-source Blender add-on for designing professional drone light-show animations and exporting
-> them to real-world drone-control formats. Target: **Blender 4.5 LTS** (current LTS, supported through July 2027).
-> License: MIT. Status: **planning / pre-implementation roadmap**.
+Revision: September 18, 2026. Starting point: commit `61f04a0`.
+This replaces the previous roadmap. It specifies intended behavior and release
+evidence; it does not describe completed features.
 
----
+## Product goal
 
-## 0. Scope & Conventions
+Build an open-source Blender extension that a drone-show team can use from
+creative brief through production handoff: formations, choreography, lighting,
+site planning, previews, constraint checking, and export. Authoring, computation,
+validation, and documented exporters should run locally without a required
+account, proprietary solver service, or drone-count license tier.
 
-This is the architectural roadmap for Sirius. It defines the target architecture (§1–§3), the phased
-implementation plan with per-phase deliverables and test milestones (§4), the export architecture
-(§5), the end-to-end user workflows (§6), and the test strategy (§7). It is a planning document: it
-specifies *what* to build and *in what order*, not the implementation itself. The architecture and
-phases (§1–§5) are stable; the workflow and test sections (§6–§7) are expected to evolve as features
-land.
+Sirius will develop its own Blender frontend and computational core from the
+existing prototype. Reusing Skybrush's frontend is not the selected starting
+point. The core begins as a local library independent of Blender; a server or
+separate worker is introduced only when a demonstrated requirement justifies it.
+Open-source libraries may be used after their behavior, license, and distribution
+requirements are understood. Interoperability must not make a proprietary service
+necessary to complete Sirius's own authoring, validation, or export workflow.
 
-**Conventions used throughout:**
-- **[R] / [F] / [N]** in the phase tables mark whether a module is rebuilt from scratch, fixed/ported
-  from the prototype, or newly written (§4).
-- Code identifiers, file paths, and Blender API names are written in `monospace`.
-- API recommendations target Blender 4.5 LTS and must be checked against that version during implementation. The
-  deprecated-API avoid-list is §8.
+The first distinctive workflow is lighting: a designer moves an invisible mask
+through a formation, layers color effects, aligns them with music, and gets the
+same evaluated light program in the viewport, renders, and exported data. The
+second is previewing: a designer can render a frame or full show without manually
+rebuilding the scene's lighting and compositor for every project.
 
-**Reference sources.** Use the following documentation to verify API and format decisions during implementation:
-- **Blender 4.5 LTS manual and Python API** — Extensions (`blender_manifest.toml`), Point Cloud
-  objects, Geometry Nodes (Node-Based Tools, Gizmos, Baking, Import nodes), the `gpu` module,
-  `depsgraph`/`msgbus`, `mathutils.kdtree`/`bvhtree`, and the Dope Sheet / Graph Editor / NLA / VSE
-  editors. Blender 4.5 LTS was released 2025-07-15 and is supported through July 2027.
-- **Export-format specifications** — Verge Aero **VVIZ**
-  (`https://docs.verge.aero/drone-show-software/verge-design-studio/vviz-format`), SPH Engineering
-  **UgCS PATH / PATH3**, **Vimdrones** raw, and **Syncronorm Depence**.
-- **The prototype repository**, used for the Phase 0 assessment (§1.2). Check the code before acting on that assessment; the import typo recorded there has since been fixed.
+Current Skybrush already documents moving mesh masks and modern Blender support.
+Sirius therefore needs to earn a preference through usability, dependable
+interchange, and a complete open implementation. See the
+[research baseline](docs/research.md). Professional adoption also depends on
+reliability, receiver compatibility, documentation, maintenance, and operator
+feedback. A feature checklist alone cannot establish that a company will switch.
 
----
+## How improvement will be demonstrated
 
-## 1. Executive Summary & Architecture Overview
+The aim is a preferred production tool, with evidence for each claimed advantage.
+Use the [performance and workflow evaluation plan](docs/performance-and-evaluation.md)
+to compare specific tasks with current Skybrush, including its licensed backend
+when that capability is needed. A community service limit is not a performance
+result. Record unavailable comparisons without inventing a winner.
 
-### 1.1 Vision & success bar
-Sirius aims to support drone-show authoring in Blender and export to selected control formats. The following are development targets, not current capabilities:
+Establish small baselines during M1–M3. Measure solver quality and failure behavior
+at M5–M6, fidelity at M7–M8, and scale at M9. Use external designer and operator
+evaluations for M10. Correctness, output fidelity, and recoverable editing remain
+release requirements during optimization. Choose a supported workload and state
+its limits; no release promises the fastest implementation for every possible show.
 
-- Generate formations of **N drones** (scale target **~1000**) from arbitrary Blender 3D objects.
-- Animate per-drone **position** and **LED color** (RGB/RGBW) over time, synced to the timeline.
-- Compute **safe transitions** between formations (optimal assignment + time-parameterized motion +
-  collision/feasibility validation).
-- **Export** to CSV, Vimdrones raw, UgCS PATH/PATH3, VVIZ, and Depence with correct
-  coordinate/unit/sample-rate conversion.
-- Ship as a modern **Blender Extension** (`blender_manifest.toml`), MIT, documented, tested.
+## Scope and release levels
 
-### 1.2 Current state assessment (Phase 0 input)
-The original assessment covered a roughly 309-line prototype. The code now has package placeholders and the import correction below, but the planned core algorithms and exporters remain unimplemented:
+The extension prepares shows and production artifacts. Ground control, vehicle
+firmware, radio links, live emergency handling, and regulatory approval belong to
+separate systems. Sirius must expose the information those systems need and
+document the boundary. Future payload or live-control integrations require their
+own design and qualification; they are not implied by a working position export.
 
-| Problem | Evidence | Impact |
-|---|---|---|
-| **Import typo (fixed)** | `materials/__init__.py` now imports the defined `configure_lighting_compositing` function | Retain an enable/disable check when restructuring |
-| **Per-drone object overhead** | `operators/create_takeoff_grid.py` calls `bpy.ops.mesh.primitive_uv_sphere_add(...)` in a nested loop, one mesh object **and** one material per drone | O(N) operator calls + O(N) materials; the practical drone-count limit needs a benchmark |
-| **No domain model** | `props.py` only has grid dimensions + color; no Formation/Drone/Show/Transition concepts | Cannot represent a real show |
-| **No animation system** | No keyframes, no timeline integration, color only as a static material tweak | Cannot author motion or synced LEDs |
-| **No transitions / collision / feasibility** | `utils/pathfinding.py` is a `pass` stub | Core value missing |
-| **No real export** | `operators/export_csv.py` is a `pass` stub, not even registered | Core value missing |
-| **Weak naming / structure** | `bpy.types.Scene.my_props`; flat operator/panel/prop split | Hard to extend |
+| Level | Required result | What may be claimed |
+| --- | --- | --- |
+| Current prototype | Existing grid and static material controls | Source-level prototype only |
+| Design demonstrator, M0–M3 | Small saved show, mask lighting, frame/full-show preview, documented interchange | Useful for learning and visual design; no flight qualification |
+| Authoring alpha, M0–M6 | Formation/cue workflow, trajectories, independent analysis, recoverable editing | Can author and analyze within explicitly supported assumptions |
+| Interoperability beta, plus M7 | At least one qualified execution-toolchain adapter and one visualization adapter | Compatibility only with the tested receiver versions and profiles |
+| Production candidate, M0–M10 | Release evidence, scale tests, repeatable handoff, external evaluations | Suitable for evaluation in the documented workflow |
+| Production release | Candidate gates plus qualified operator acceptance for its intended use | Versioned support statement with known limitations |
 
-**Decision:** treat the prototype as a *reference for intent* (modular props/operators/panels split,
-LED emission + Fog-Glare compositing) and **rebuild on a clean layered architecture**. Phase 0
-hardens + restructures rather than bolting features onto the grid operator. Per-module rebuild vs.
-refactor is specified in the phase tables.
+No dates are assigned before throughput and difficult research tasks are known.
+The large-company target is a sustained product program, not the first release.
+Finish small, usable slices and revise the plan from evidence.
 
-### 1.3 Layered architecture
+## Development order
 
-```
-                              ┌─────────────────────────────────────────────┐
-   Blender UI layer           │  panels/  operators/  gizmos/  draw handlers │  bpy.types.Panel/Operator,
-   (thin, bpy-only)           │  (N-panel "Sirius", UILists, gpu overlays)    │  GizmoGroup, SpaceView3D.draw_handler_add
-                              └───────────────────────┬─────────────────────┘
-                                                      │ reads/writes via adapter
-                              ┌───────────────────────▼─────────────────────┐
-   bpy integration adapter    │  blender/  (scene_state, swarm_object,       │  bpy, mathutils, gpu, bmesh,
-   (bpy-facing glue)          │  material_factory, node_groups, handlers)    │  depsgraph evaluation
-                              └───────────────────────┬─────────────────────┘
-                                                      │ pure data in/out
-              ┌───────────────┬───────────────────────┼───────────────────────┬──────────────────┐
-              ▼               ▼                       ▼                       ▼                  ▼
-      ┌──────────────┐ ┌──────────────┐      ┌────────────────┐      ┌────────────────┐  ┌────────────────┐
-   core/         │ algorithms/   │        exporters/        │      importers/          │  georef/        │
-   data model    │ assignment,   │        unified trajectory│      round-trip          │  coord frames,  │
-   (dataclasses) │ collision,    │        model + writers  │      (CSV/VVIZ in)       │  lat/lon, units │
-   NO bpy        │ interpolation │        NO bpy            │      NO bpy              │  NO bpy         │
-      └──────────────┘ └──────────────┘      └────────────────┘      └────────────────┘  └────────────────┘
-                          ▲ pure-Python, fully unit-testable WITHOUT Blender ▲
+```mermaid
+flowchart LR
+    M0["M0: reliable prototype"] --> M1["M1: identity, time, persistence"]
+    M1 --> M2["M2: moving light masks"]
+    M2 --> M3["M3: first complete design demo"]
+    M3 --> M4["M4: formations and cues"]
+    M4 --> M5["M5: trajectories"]
+    M5 --> M6["M6: full-show validation"]
+    M6 --> M7["M7: qualified adapters"]
+    M7 --> M10["M10: production release"]
+    M3 --> M8["M8: lighting and render production"]
+    M6 --> M9["M9: scale and batch workflows"]
+    M8 --> M10
+    M9 --> M10
 ```
 
-**Golden rule:** every algorithm (assignment, collision, interpolation, coordinate conversion,
-format encoders/decoders) lives in **bpy-free** modules so it is unit-testable headlessly. The
-`blender/` adapter is the only layer that imports `bpy`, and it does so exclusively to translate
-between the pure data model and Blender's scene graph. This is what makes the heavy logic testable
-and keeps Blender version churn isolated to one layer.
-
-### 1.4 Primary drone representation (DECISION)
-
-**Authoritative source of truth = a bpy-free `Show` data model.** The Blender scene holds a **single
-"Swarm" object** (Point Cloud when N is large; an Instanced mesh for visual fidelity) whose
-per-point attributes are *derived* from the Show model at evaluation time.
-
-| Need | Representation | Why |
-|---|---|---|
-| Scale to ~1000 drones | **Point Cloud object** + per-point custom attributes (`drone_id`, `color` RGBW, `target_slot`, `home_pos`, `flags`) | First-class Blender object type, far lighter than thousands of meshes+materials; attributes are Geometry-Nodes-readable and exportable. Manual: `/modeling/point_cloud/` |
-| Nice viewport LED look | **Instance on Points** (small emission proxy) over the swarm | Thousands of cheap instances render the "LED bloom" look; one shared material, not one-per-drone |
-| Per-drone authored paths | **Curves** (one poly/Bezier spline per drone), editable in the viewport, *opt-in* for hand-tweaks | Curves are lightweight & natively editable; a separate time map (Show model) resolves the spatial-curve-vs-time problem |
-| Drone identity across the show | **Stable point index / `drone_id`** (never reordered by us; assignment only changes *slot*, not identity) | Required by UgCS (begin-scene order must match end-scene order) and by stable export |
-
-> Point Cloud vs. instances: Point Cloud is the *data backbone* (scale + attributes + export source);
-> instances are the *visual skin*. We never depend on instance count for correctness — export reads
-> the evaluated swarm attributes, not rendered pixels.
-
-### 1.5 Recommended target package layout
-
-```
-sirius/
-├─ blender_manifest.toml          # modern Extension packaging (§2.1)
-├─ __init__.py                    # register/unregister (loads manifest meta too)
-├─ core/                          # bpy-FREE: data model + pure logic (unit-tested)
-│  ├─ __init__.py
-│  ├─ model.py                    # Show, Launchpad, Formation, FormationGroup,
-│  │                              #   FormationSequence, Drone, Transition, Payload, Geofence
-│  ├─ ids.py                      # stable drone id allocation
-│  └─ units.py                    # meters, time<->frame, sample-rate math
-├─ algorithms/                    # bpy-FREE
-│  ├─ __init__.py
-│  ├─ assignment.py               # Hungarian (scipy if present else pure-python)
-│  ├─ interpolation.py            # trapezoidal velocity-profile time parameterization
-│  ├─ collision.py                # min-spacing (KDTree iface), geofence (BVH iface)
-│  ├─ feasibility.py              # vmax/amax/jerk/altitude/density validators
-│  └─ flocking.py                 # boids (accelerator phase)
-├─ exporters/                     # bpy-FREE writers
-│  ├─ __init__.py
-│  ├─ trajectory.py               # unified internal TrajectorySample model + sampler
-│  ├─ coord.py                    # Blender Z-up <-> ogl/ENU/NED, lat/lon anchoring
-│  ├─ csv_writer.py
-│  ├─ vimdrones_writer.py
-│  ├─ ugcs_writer.py
-│  ├─ vviz_writer.py
-│  └─ depence_writer.py
-├─ importers/                     # bpy-FREE parsers (round-trip, accelerator phase)
-│  ├─ csv_reader.py
-│  └─ vviz_reader.py
-├─ blender/                       # ONLY layer that imports bpy
-│  ├─ __init__.py
-│  ├─ registry.py                 # central class register/unregister
-│  ├─ scene_state.py              # Scene <-> Show serialization (read/write into .blend)
-│  ├─ swarm_object.py             # Point Cloud + attributes create/update
-│  ├─ node_groups.py              # reusable GeoNodes group factory (distribute/instance)
-│  ├─ material_factory.py         # single shared LED emission material
-│  ├─ compositing.py              # Filmic + Fog Glare (carried from prototype, fixed)
-│  ├─ handlers.py                 # depsgraph_update_post / frame_change_post / msgbus
-│  ├─ draw.py                     # gpu overlays (violations, geofence, ids, ribbons)
-│  └─ gizmos.py                   # spacing/density interactive handles
-├─ operators/                     # thin bpy operators (call core/algorithms/exporters)
-│  ├─ launchpad.py  formations.py  led.py  transitions.py  validate.py  export.py  ...
-├─ panels/                        # N-panel "Sirius" + UILists
-├─ props/                         # PropertyGroups (renamed from my_props)
-├─ tests/                         # pytest + headless bpy harness
-└─ assets/                        # node group .blends, presets, logo
-```
-
----
-
-## 2. Verified Blender 4.5 LTS API Decisions (non-deprecated building blocks)
-
-Every subsystem below uses **current** APIs only. The single most important deprecation to avoid:
-**`bgl` was removed in Blender 4.0+.** All viewport drawing uses the `gpu` module.
-
-### 2.1 Packaging — modern Extensions system
-Ship `blender_manifest.toml` (the modern install path; legacy `bl_info` is kept for backward
-compatibility but is secondary). Schema per manual
-`/advanced/extensions/getting_started.html`:
-
-```toml
-schema_version = "1.0.0"
-id = "sirius"
-version = "0.1.0"
-name = "Sirius"
-tagline = "Design drone light-show animations and export to flight-ready formats"
-maintainer = "Alexandr Tkachyov"
-type = "add-on"
-blender_version_min = "4.5.0"
-tags = ["3D View", "Animation", "Import-Export"]
-license = ["SPDX:MIT"]
-permissions = { files = "Export show data (CSV/VVIZ/UgCS/Vimdrones) to disk" }
-```
-`permissions.files` is required because we write export files. (We do not need `camera`,
-`microphone`, or `network`.)
-
-### 2.2 Viewport drawing — `gpu` module (NOT `bgl`)
-Manual/API: `https://docs.blender.org/api/latest/gpu.html`,
-`gpu_extras.batch.for_shader`, `bpy.types.SpaceView3D.draw_handler_add`.
-
-```python
-# Illustrative (NOT production code) — correct, non-deprecated pattern
-import gpu
-from gpu_extras.batch import batch_for_shader
-
-def _draw_violations(self, context):
-    shader = gpu.shader.from_builtin('UNIFORM_COLOR')        # or 'SMOOTH_COLOR'
-    shader.uniform_float("color", (1.0, 0.0, 0.0, 1.0))
-    batch = batch_for_shader(shader, 'POINTS', {"pos": self._violating_positions})
-    shader.bind(); batch.draw(shader)
-
-# registration:
-SpaceView3D = bpy.types.SpaceView3D
-handle = SpaceView3D.draw_handler_add(_draw_violations, (self, None), 'WINDOW', 'POST_VIEW')
-# ... SpaceView3D.draw_handler_remove(handle, 'WINDOW') on unregister
-```
-Use `'POLYLINE_SMOOTH_COLOR'` for path ribbons, `'SMOOTH_COLOR'` for per-drone-colored points.
-`POST_VIEW` = world space; `POST_PIXEL` = screen space (for drone-ID labels).
-
-### 2.3 Formation generation — Geometry Nodes (idiomatic engine)
-Manual: `/modeling/geometry_nodes/`. Reusable node groups driven by a GeoNodes modifier; evaluate
-with the depsgraph. Key nodes: **Distribute Points on Faces** (scatter on meshes/curves/text),
-**Resample Curve** (even spacing on splines), **String to Curves** (text/logos), **Instance on
-Points** (LED proxies), **Store Named Attribute** (write `drone_id`/`color`).
-
-Blender 4.5 LTS Geometry Nodes also gives us **Node-Based Tools**, **Gizmos** (linear/dial/transform),
-**Baking**, and **Import nodes** (CSV/OBJ/PLY/STL/TXT/VDB, all confirmed shipped in 4.5 LTS) —
-leverage Import→CSV for reference trajectories and Node Tools as interactive formation editors.
-Formation scatter uses our own **Distribute Points on Faces** node group (we do not rely on any
-bundled scatter-asset modifier).
-
-```python
-# Illustrative: read evaluated swarm positions
-deps = context.evaluated_depsgraph_get()
-eval_obj = swarm_obj.evaluated_get(deps)
-# Point cloud: positions via attribute, or convert via to_mesh() for instance/mesh swarms
-```
-
-### 2.4 Swarm object — Point Cloud + custom attributes
-Manual: `/modeling/point_cloud/`. A Point Cloud object holds N points and named attributes
-(point domain), readable by GeoNodes and by exporters. This is lighter than thousands of mesh
-objects and avoids the one-material-per-drone trap. (`bpy.data.pointclouds.new`, point attributes
-via `pointcloud.attributes.new(name, type, 'POINT')`.)
-
-### 2.5 Animation — reuse native system (do NOT reinvent)
-Manual: `/editors/dope_sheet/`, `/editors/graph_editor/`, `/editors/nla/`. Author via
-`obj.keyframe_insert(...)` / Action F-Curves; Dope Sheet & Graph Editor for editing; NLA for
-composing formation "clips" as strips (maps naturally to the professional Composer timeline:
-Launch → elements → Return as NLA strips). Per-drone LED color via animated custom properties or a
-GeoNodes color field sampled over time.
-
-> Do **not** build a custom animation editor. Use the Dope Sheet/Graph Editor/NLA. We only add a
-> thin "Composer-like" panel that creates/aligns NLA strips.
-
-### 2.6 Real-time evaluation — depsgraph + handlers + msgbus
-Always read **evaluated** data inside handlers (never live `bpy.data`). Use
-`bpy.app.handlers.depsgraph_update_post` / `frame_change_post` for live feasibility recalculation
-and LED refresh, and `bpy.msgbus.subscribe_rna` for cheap property-change reactions.
-
-```python
-# Illustrative: subscribe to a property change
-bpy.msgbus.subscribe_rna(
-    key=(context.scene.sirius_props, "drone_count"),
-    owner=owner, args=(context,), notify=_on_count_changed,
-)
-bpy.msgbus.publish_rna  # available where needed
-```
-
-### 2.7 Collision / spatial math — `mathutils`
-- `mathutils.kdtree` — nearest-neighbour → minimum-spacing checks, O(n log n).
-  API: `https://docs.blender.org/api/latest/mathutils.kdtree.html`
-- `mathutils.bvhtree` — mesh/volume proximity → geofence & obstacle collision.
-  API: `https://docs.blender.org/api/latest/mathutils.bvhtree.html`
-- `mathutils.Vector`/`Matrix`/quaternions, `bmesh` for mesh queries.
-
-> The **algorithms** layer wraps these behind a bpy-free interface (e.g. a pure-Python `KDTree`
-> shim, or dependency-injected spatial index) so unit tests can run without Blender.
-
-### 2.8 Assignment problem — Hungarian algorithm
-Use `scipy.optimize.linear_sum_assignment` when scipy is available; otherwise a vendored
-pure-Python Hungarian implementation. **Decision needed (§8):** vendor scipy, lazy-load it, or ship
-the pure-Python fallback only.
-
-### 2.9 Performance — avoid `bpy.ops` in hot loops
-Use the data API; batch creation; cache heavy computations; for long generation/validation jobs use
-a modal operator + `context.window_manager.event_timer` and report progress via
-`context.window_manager.progress_begin/update/end`. This is the direct fix for the prototype's
-`bpy.ops`-in-a-loop bottleneck.
-
-### 2.10 UI — N-panel + UILists + gizmos
-Sidebar (`bl_space_type='VIEW_3D'`, `bl_region_type='UI'`, `bl_category='Sirius'`),
-`bpy.types.UIList` for formation/drone lists, `bpy.props` PropertyGroups, popovers, and
-`bpy.types.GizmoGroup` handles for interactive spacing/density editing.
-
----
-
-## 3. Domain Data Model → Blender Mapping
-
-Mirrors the professional pipeline (Verge/SPH/Vimdrones). Each concept maps to a Blender-native home.
-
-| Domain object | Core dataclass (`core/model.py`, bpy-free) | Blender home |
-|---|---|---|
-| **Show** | root: formations[], sequences[], launchpad, geofence, global_ref_frame, time range, fps | `Scene.sirius_show` (serialized PropertyGroup) |
-| **Launchpad** | drone_count, pool of takeoff *shapes* (Grid/Circle/Rectangle/Polygon/Arbitrary), spacing, overflow shape, launch sequence/stagger, agent_def | Swarm object home positions + a GeoNodes "launchpad" group |
-| **Formation** | anchor point; source object ref; allocation (Flexible%/Fixed count); min/max slots; exclude_from_lighting; per-slot target positions | A Blender object (mesh/curve/text) + a "Formation" PropertyGroup entry; target slots computed via GeoNodes |
-| **FormationGroup** | collection of elements sharing one anchor; per-element allocation weights | Blender Collection + group PropertyGroup |
-| **FormationSequence** | subset transition between elements; allocation mode; overflow; apply-color-source-before | NLA strip / a "Sequence" PropertyGroup driving a Transition |
-| **Drone** | stable `id`, home pos, current slot assignment per formation, per-time color keyframes | Point index + `drone_id` attribute + color attribute |
-| **Transition** | from→to formations, assignment map (id→slot), duration, velocity profile, stagger | Computed path samples; optionally per-drone Curve |
-| **Payload** | Light {lumens, colorType RGB/RGBW, sourceType dome/spotlight} or Pyro {eventTime, vdl, pan, tilt} | Per-drone attribute / payload PropertyGroup |
-| **Geofence** | box/polygon bounds, altitude ceil/floor, density limit, vmax/amax/jerk | Helper object(s) + Geofence PropertyGroup; drawn via `gpu` |
-
-**Identity invariant (critical for UgCS):** a drone's `id`/point-index is **stable for the entire
-show**. Transitions reassign *slots*, never identities. The begin-scene drone order must equal the
-end-scene order (UgCS PATH requirement).
-
----
-
-## 4. Phased Implementation Roadmap
-
-Notation: **[R]** = rebuild from scratch, **[F]** = fix/port from prototype, **[N]** = new.
-Dependencies are cumulative (each phase depends on all earlier ones unless noted).
-
-> **MVP boundary:** **Phases 0–5 are the MVP** — the minimum slice that produces a drone-show
-> animation end-to-end (create → animate → transition → validate → export to a real control format).
-> **Phases 6–7 are post-MVP.** See §9 for the governing rule.
-
-### Phase 0 — Stabilize, Restructure, Scalable Foundation
-**Objective:** make the add-on enable cleanly, introduce the layered architecture + bpy-free core,
-and replace the non-scalable swarm/material approach.
-
-- **[F]** Fix blocking `ImportError`: rename import to `configure_lighting_compositing` (correct spelling) in `materials/__init__.py`.
-- **[N]** `blender_manifest.toml` (§2.1) + keep minimal `bl_info`.
-- **[N]** New package layout (§1.5); central `blender/registry.py` for register/unregister.
-- **[N]** Rename `Scene.my_props` → `Scene.sirius_props`; move props into `props/`.
-- **[N]** `core/model.py` — dataclass skeletons (Show/Launchpad/Formation/Drone/Geofence).
-- **[N]** `blender/swarm_object.py` — create single Point-Cloud/Mesh swarm + per-point attributes; **[R]** `CreateTakeoffGrid` to populate the swarm via the **data API** (no `bpy.ops` in loops).
-- **[N]** `blender/material_factory.py` — **one** shared LED emission material (kills the one-material-per-drone trap); **[F]** port `create_drone_emission_material` to the shared factory.
-- **[F]** `blender/compositing.py` — port Filmic + Fog-Glare setup (now spelled correctly).
-- **[N]** `tests/` harness: pytest + headless Blender runner; `conftest` bootstraps `bpy` via `blender --background --python` (or `pytest-blender`).
-- **[N]** Pure-Python unit tests for `core/model.py` (no bpy).
-
-**DoD:** add-on installs via drag-drop Extension install AND via legacy `bl_info`; enabling produces
-no errors; a 10×10 swarm is created as a single object with one shared material; `pytest -q` passes
-on the core tests; perf of grid creation is sub-linear in N (no `bpy.ops` in loop).
-**Risk:** Point Cloud API editability limits → mitigation: keep swarm object swappable (Point Cloud
-vs. instanced mesh) behind `swarm_object.py`.
-**Test milestone:** T0 (registry round-trip, swarm creation, no-deprecated-API linter gate).
-
-### Phase 1 — Launchpad & Formation Generation
-**Objective:** generate takeoff grids and arbitrary formations at controllable density/spacing.
-
-- **[N]** Launchpad generator: takeoff shapes Grid/Circle/Rectangle/Polygon/Arbitrary; spacing enforcement + overflow shape; drone count auto-cap; staggered launch.
-- **[N]** `blender/node_groups.py` — reusable GeoNodes groups: **Distribute Points on Faces** (mesh scatter), **Resample Curve** (spline formations), **String to Curves** (text/logos/QR), density + spacing controls exposed on the modifier.
-- **[N]** Formation→slot sampling: read evaluated target positions via depsgraph; produce a slot list per formation.
-- **[N]** `algorithms/assignment.py` — Hungarian assignment of drones→slots (min total travel): **lazy-load `scipy.optimize.linear_sum_assignment`**, fall back to a bundled pure-Python Hungarian if scipy is absent (correctness identical, both unit-tested vs. brute force).
-- **[N]** Formation PropertyGroup + UIList; operators to create a formation from the active object.
-
-**DoD:** user can turn any mesh/curve/text object into a formation with a density slider and a
-spacing constraint; drones auto-assign to nearest slots; overflow drones go to the overflow shape.
-**Risk:** GeoNodes node-tree differences between Blender versions → pin tested node-tree templates in `assets/` (4.5 LTS API is frozen for the LTS series, so this risk is low).
-**Test milestone:** T1 (formation sampling, Hungarian correctness vs. brute force on small N).
-
-### Phase 2 — Animation & LED
-**Objective:** author per-drone position + color over the timeline, synced to scene fps.
-
-- **[N]** Timeline integration: map Show time ↔ scene frames (`core/units.py`); define show frame range.
-- **[N]** Per-drone LED color keyframes (RGB/RGBW) over time; apply to selection/group/all (port `ChangeLEDColor` intent to the shared material + color attribute).
-- **[N]** `blender/handlers.py` — `frame_change_post`/msgbus live LED refresh from the Show model.
-- **[F]** Compositing bloom extended (per-formation color, intensity).
-- **[N]** Composer panel: thin NLA-strip helper (Launch → elements → Return) — no custom anim editor.
-
-**DoD:** scrubbing the timeline animates drone positions and LED colors; color keyframes appear in
-the Dope Sheet; the shared emission material reflects per-drone colors.
-**Risk:** per-point color animation throughput at N=1000 → mitigation: drive color via a single
-GeoNodes color field sampled by time, not per-point F-Curves.
-**Test milestone:** T2 (time↔frame math, color keyframe serialization).
-
-### Phase 3 — Transitions & Assignment
-**Objective:** compute safe formation→formation transitions (the core "who goes where, how").
-
-- **[N]** `algorithms/interpolation.py` — time-parameterized motion (trapezoidal velocity profile honoring vmax/amax/jerk) per drone; staggered start.
-- **[N]** Transition operator: given two formations, run Hungarian to map id→slot, then interpolate; output path samples (and optionally a per-drone Curve for editing).
-- **[N]** FormationGroup/FormationSequence partial-subset transitions (Flexible%/Fixed allocation).
-
-**DoD:** selecting two formations and "Create Transition" produces smooth, staggered, non-crossing
-motion that respects vmax/amax; per-drone paths are editable as curves.
-**Risk:** identity preservation across transitions → enforced by id invariant (slots only).
-**Test milestone:** T3 (assignment identity stability, velocity-profile feasibility vs. limits).
-
-### Phase 4 — Collision & Feasibility Validation
-**Objective:** continuously validate safety and surface violations.
-
-- **[N]** `algorithms/collision.py` + `algorithms/feasibility.py`: min-spacing (KDTree), vmax/amax/jerk, geofence volume (BVH), altitude ceil/floor, density limits.
-- **[N]** `blender/draw.py` — `gpu` overlays: highlight violating drones/segments, draw geofence box, spacing heat-map, drone IDs.
-- **[N]** Feasibility report (counts, worst offenders) + "block unsafe export" toggle.
-- **[N]** Live recalculation via `depsgraph_update_post` (debounced) reading evaluated data.
-
-**DoD:** any spacing/speed/geofence violation is highlighted live in the viewport and listed in the
-report; export refuses (or warns) when violations exist.
-**Risk:** KDTree/BVH rebuild cost per frame at N=1000 → cache + incremental updates + debounce.
-**Test milestone:** T4 (deterministic violation detection on synthetic scenes).
-
-### Phase 5 — Export Engine
-**Objective:** export to all five formats with correct conversion. (Full spec in §5.)
-
-- **[N]** `exporters/trajectory.py` — unified `TrajectorySample` model + sampler at a configurable **export sample rate** (decoupled from viewport fps).
-- **[N]** `exporters/coord.py` — Blender Z-up ↔ `ogl`/ENU/NED, lat/lon anchoring around the global reference frame, unit (meters), Vimdrones "Z Axis Rotate".
-- **[N]** Writers: `csv_writer.py`, `vimdrones_writer.py`, `ugcs_writer.py` (**both PATH and PATH3**, both first-class — not flagged/experimental), `vviz_writer.py`, `depence_writer.py`.
-- **[N]** Export UI: format selector, sample-rate, coordinate-frame/global-ref inputs, validation gate.
-- **[N]** Manifest `permissions.files` (already declared in Phase 0).
-- **[N]** Minimal **show-origin anchor** (lat/lon/alt) consumed by `coord.py` for VVIZ/Depence `globalReferenceFrame` and UgCS georeferencing (full geo-ref UI is Phase 6).
-
-**DoD:** a known show exports to all five formats (PATH + PATH3 both valid); outputs validated
-against **golden reference files** (incl. VVIZ delta-reconstruction round-trip and UgCS ≤4 fps /
-order / 12 000-frame constraints).
-**Risk:** format spec ambiguity (UgCS PATH3 "Beta", Depence least-documented) → pin each writer to
-its documented constraints and treat the golden-file diff as that format's fidelity gate.
-**Test milestone:** T5 (golden-file diff per format; delta reconstruction; rate-cap enforcement).
-
-### Phase 6 — Accelerators (high-value, **post-MVP**)
-> Per the §9 MVP rule, everything here is a committed feature but is **not required to produce an
-> animation end-to-end**, so it is sequenced after the MVP (Phases 0–5).
-
-- **Geo-ref tooling:** full UI for the **ENU tangent-plane** origin anchor (map/click-to-set origin,
-  CRS presets, real-world units); audience/readability helpers. (The minimal anchor ships in Phase 5.)
-- **Pyro payloads (model + full authoring UI):** event-time triggers, VDL descriptors, pan/tilt;
-  emitted by the VVIZ and Depence writers. *(MVP Light-only payloads first; pyro authoring lands here.)*
-- **QR/text/logo generators:** dedicated builders (reuse String-to-Curves + scatter).
-- **Music/beat sync:** full VSE audio-lane cues + `eventTags` (song/effect/pyro start markers); optional beat-detection later.
-- **Flocking controller** (boids) in `algorithms/flocking.py`.
-- **Import round-trip:** `importers/` (CSV/VVIZ → Show model → Blender) for editing existing shows.
-- Reusable show-effect **assets/presets**; batch multi-show export.
-- Previsualization LED materials/bloom extensions.
-
-**DoD per item:** feature works end-to-end with at least one golden test.
-**Test milestone:** T6 (round-trip parity: export then import yields equivalent Show; pyro payload round-trip through VVIZ/Depence).
-
-### Phase 7 — Polish & Release
-- Documentation (user guide + developer/architecture docs), README rewrite, examples.
-- Performance pass: 1000-drone benchmark gate (generation, validation, export under target times).
-- Graceful degradation (Progressive/Reduced modes), error handling, logging.
-- Extension-platform packaging (tagged release, screenshots), v1.0.
-
-**DoD:** installable Extension; passes full test matrix on Blender 4.5 LTS; 1000-drone show authored,
-validated, and exported; documented.
-
----
-
-## 5. Export Architecture
-
-### 5.1 Unified internal trajectory model (bpy-free)
-A single sampler reduces the Show to a list, per drone, of `TrajectorySample`s:
-
-```
-TrajectorySample: t (s), frame, x, y, z (m, Blender space), heading (deg),
-                  r, g, b (0-255), optional w (0-255), optional pyro events[]
-```
-
-The **export sample rate** is independent of the viewport fps (resamples the authored motion), so we
-can satisfy per-format constraints (e.g. UgCS ≤4 fps, Vimdrones fps = scene fps). Identity order is
-preserved (begin-scene order == end-scene order).
-
-### 5.2 Coordinate / unit / rate conversion (`exporters/coord.py`)
-- **Units:** Blender default = meters. Keep meters internally.
-- **Frames:** Blender is Z-up right-handed. Targets:
-  - **VVIZ `ogl`** = X right, Y up, Z forward. Map Blender `(x, y, z)` (z = up, y = forward) →
-    ogl `(x, z, -y)` (right = x, up = z, forward = -y). Expose as a configurable axis-remap matrix.
-  - **ENU / NED** (UgCS variants) via axis remap; **Vimdrones** + "Z Axis Rotate" offset.
-- **Geo-anchoring:** VVIZ `globalReferenceFrame {lat,lon,alt}` is the real-world origin of local
-  (0,0,0). Convert local **ENU** (East-North-Up) offsets to lat/lon via a **flat-earth tangent-plane
-  approximation** around the anchor (the de-facto drone-show standard; accurate across a ~1 km show
-  footprint; matches UgCS conventions too).
-- **Sample rate:** decouple export fps from viewport fps; clamp per format.
-
-### 5.3 Per-format writers (exact encoding rules from verified specs)
-
-**A) Generic CSV** — common denominator. Columns `frame, drone_id, x, y, z, r, g, b` (variants with
-`yaw`/heading). One file, sampled at export fps.
-
-**B) Vimdrones raw** — **one file per drone**, named `<id>.txt` (e.g. `1.txt`). Each line:
-`frame_number  x  y  z  r  g  b` (space-separated; r,g,b integers 0–255). fps = Blender scene fps
-(override-able via export rate). Apply "Z Axis Rotate" if set.
-
-**C) UgCS PATH / PATH3** (SPH / `ugcs/ddc`):
-- **Frame-rate cap:** PATH ≤ **4 fps**; total ≤ **~12,000 frames (~8m20s)**. **PATH3** is the newer
-  variant and is a **first-class writer** (not experimental); both honor the same identity rule.
-- **Order invariant:** drone order in the **last** formation must match the **begin** scene →
-  enforced by the stable-id invariant; the writer emits drones in begin-scene order.
-- Axis/units follow UgCS conventions (configurable remap).
-
-**D) VVIZ** (Verge Visualization — **visualization/interchange, NOT flight-ready**, per spec):
-- Header: `version`, `performanceName`, `coordinateFrame:"ogl"`, `globalReferenceFrame{lat,lon,alt}`,
-  `defaultPositionRate` (Hz, position step), `defaultColorRate` (Hz, color step),
-  `timeOffsetSecs`.
-- `eventTags[]`: `{time(sec), tagType(EffectStart|SongStart|PyroStart), tagID, color{r,g,b}}` for
-  audio/video/pyro sync.
-- `performances[]` each = `agentDescription` + `payloadDescription[]`:
-  - `agentDescription`: `homeX/homeY/homeZ` + `homeH` (heading deg) start pose, `airframe` id,
-    `agentTraversal[]` = **delta-compressed** steps `{dx,dy,dz,dh,dt}` — reconstruct absolute pose by
-    accumulating deltas from `home` (dt in seconds; if absent, `dt = 1/defaultPositionRate`).
-  - `payloadDescription[]`: `type:"Light"` `{lumens, colorType(RGB|RGBW), sourceType("dome"|"spotlight"),
-    payloadActions[]}` where each action is `{r,g,b 0-255, optional frames}` = hold that color for
-    `frames` steps at `defaultColorRate` (1 step if `frames` absent) **OR** `type:"Pyro"`
-    `{eventTime(sec), vdl, pan, tilt}`.
-- Writer must (1) convert to `ogl`, (2) delta-compress positions, (3) run-length-encode color into
-  `payloadActions` with `frames` holds, (4) emit event tags from the timeline.
-
-**E) Depence** (Syncronorm) — positions, rotations, LED colors, pyro payloads; previz target.
-
-**Verification gate:** delta-reconstruction round-trip (home + Σ deltas == sampler output), and
-color hold-length sum == show color-rate × duration.
-
-### 5.4 Flight-ready vs. visualization split
-- **Flight-ready (absolute per-frame poses):** CSV, Vimdrones raw, UgCS PATH/PATH3.
-- **Visualization/interchange (delta-compressed / rich metadata):** VVIZ, Depence.
-The unified sampler feeds both branches; writers pick the representation. Export is blocked by the
-feasibility gate (Phase 4) unless the user explicitly overrides.
-
----
-
-## 6. End-to-End User Workflows (use-case section)
-
-Each workflow names the **entry actor**, **goal**, **steps in the UI**, the **Blender/API surface
-touched**, and **acceptance criteria**. These double as integration-test narratives.
-
-### UC-1 — First-show quickstart (onboarding)
-- **Actor:** new user. **Goal:** launchpad → one formation → simple color → export CSV.
-- **Steps:** open Sirius N-panel → set drone count + spacing → *Create Launchpad* (Phase 0/1) →
-  add a Text object "HI" → *Create Formation from Active* with density slider (Phase 1) → set LED
-  color + *Create Transition* (Phase 3) → set frame range → *Export → CSV* (Phase 5).
-- **Acceptance:** CSV rows == `frame,drone_id,x,y,z,r,g,b`; drone count matches; positions in meters.
-
-### UC-2 — Logo/text/QR formation show
-- **Actor:** designer. **Goal:** turn a logo mesh / text / QR into a held formation.
-- **Steps:** import logo (or *Add Text* / *Generate QR* in Phase 6) → *Create Formation* (GeoNodes
-  Distribute/Resample/String-to-Curves) → tune density/spacing → assign → hold over a frame range.
-- **Acceptance:** formation points lie on the source object's surface; spacing constraint honored.
-
-### UC-3 — Music-synced multi-formation show with transitions
-- **Actor:** show designer. **Goal:** a timed sequence of formations synced to audio.
-- **Steps:** import audio into VSE (Phase 6) → place formations at beat times → *Create Transition*
-  between each (Hungarian + trapezoidal profile) → set per-formation LED palettes (Phase 2) →
-  NLA/Composer to align clips.
-- **Acceptance:** transitions are non-crossing and within vmax/amax; colors change on beat frames.
-
-### UC-4 — Feasibility-checked & exported to a vendor format
-- **Actor:** pilot/operator. **Goal:** a file suitable for validation in the target control stack. Passing the software checks alone does not establish flight safety.
-- **Steps:** *Validate* (Phase 4) → review violation report + viewport highlights → fix spacing/speed
-  → choose format (Vimdrones/UgCS/VVIZ) → set sample rate + geo-ref → *Export*.
-- **Acceptance:** zero violations at export; output passes the golden-file check; UgCS file ≤4 fps
-  and order-invariant; VVIZ deltas reconstruct correctly.
-
-### UC-5 — Round-trip edit of an existing show
-- **Actor:** designer. **Goal:** import a previously exported show, tweak, re-export.
-- **Steps:** *Import CSV/VVIZ* (Phase 6 importers) → reconstruct Show model + swarm → edit one
-  drone's path/LED → *Export*.
-- **Acceptance:** import-then-export yields a Show equivalent to the source (within tolerance).
-
-### UC-6 — Large 1000-drone stadium show
-- **Actor:** power user. **Goal:** author/validate/export at scale without freezing.
-- **Steps:** 1000-drone launchpad (Point-Cloud backbone) → several dense formations → transitions →
-  validate (debounced KDTree/BVH) → export VVIZ + CSV.
-- **Acceptance:** viewport stays interactive; generation/validation/export complete within Phase 7
-  benchmark targets; no `bpy.ops`-in-loop regressions.
-
-### Edge cases to cover (in tests §7)
-- Target formation needs **more** drones than exist → overflow shape (Launchpad).
-- Target needs **fewer** drones → flexible/fixed allocation + min/max slots.
-- Transition would violate vmax/amax → validator flags; writer blocks/overrides.
-- UgCS show longer than ~8m20s or >12000 frames → block with message.
-- RGBW payloads (white channel) preserved through CSV-extended / VVIZ.
-- Geo-ref anchor missing → warn, default to local-only (no lat/lon).
-- Depgraph-read during handler uses **evaluated** data (never live `bpy.data`).
-
----
-
-## 7. Test Strategy (test-suite section)
-
-### 7.1 Layers
-1. **Pure-Python unit tests (no Blender)** — `core/`, `algorithms/`, `exporters/`, `importers/`,
-   `georef/`. Fast, CI-friendly. This is where correctness of assignment, interpolation, collision,
-   feasibility, coordinate conversion, and format encoders lives.
-2. **Blender integration tests (headless)** — invoke `bpy` via
-   `blender --background --python tests/run_blender_tests.py` (or `pytest-blender`). Covers swarm
-   creation, GeoNodes formation sampling, handlers, draw registration, end-to-end operators.
-3. **Golden-file tests** — one reference output per export format; diff current export against it.
-4. **Performance gate** — benchmark N=1000 generation/validation/export against targets.
-
-### 7.2 Tooling
-- `pytest` + a `conftest.py` that provides a headless `bpy` fixture.
-- A tiny "deprecated-API linter" gate (`rg` for `bgl`, `user_preferences`, `bpy.ops` inside loops)
-  in CI to prevent regressions.
-
-### 7.3 Test milestones (mapped to phases)
-| ID | Phase | Coverage focus |
-|---|---|---|
-| T0 | 0 | registry round-trip; swarm creation; no-deprecated-API gate |
-| T1 | 1 | formation sampling (mesh/curve/text); Hungarian vs. brute-force on small N; density/spacing |
-| T2 | 2 | time↔frame; color keyframe serialization; RGBW round-trip |
-| T3 | 3 | assignment identity stability; trapezoidal profile respects vmax/amax/jerk; non-crossing |
-| T4 | 4 | deterministic violation detection (spacing/speed/geofence/altitude/density); overlay wiring |
-| T5 | 5 | golden-file diff per format; VVIZ delta reconstruction; UgCS ≤4fps & order invariant; Vimdrones per-file |
-| T6 | 6 | import round-trip parity; QR/text generators; boids stability |
-| T7 | 7 | 1000-drone perf gate; full Extension install; docs build |
-
-### 7.4 Representative pure-Python test ideas (no code here, just intent)
-- `assignment`: a 3-drone↔3-slot case with a known unique optimum → assert exact mapping.
-- `vviz_writer`: feed a fixed `TrajectorySample` list → assert header fields, that
-  `home + Σ(dx,dy,dz)` equals the sampler's absolute positions, and that `Σ color frames` equals
-  `duration × defaultColorRate`.
-- `coord`: Blender `(0,1,0)` → `ogl` `(0,0,-1)`; ENU tangent-plane lat/lon offset within tolerance.
-- `ugcs_writer`: feed a 6 fps trajectory → assert output decimated to ≤4 fps; feed 13000 frames →
-  assert it refuses.
-
----
-
-## 8. Deprecated / Avoid List (anti-regression)
-
-| Do NOT use | Use instead |
-|---|---|
-| `bgl` (removed in 4.0) | `gpu` module + `gpu_extras.batch` + `SpaceView3D.draw_handler_add` |
-| `context.user_preferences` | `context.preferences` |
-| `bpy.ops.*` inside hot loops / per-drone | data API, batch creation, modal+`event_timer` |
-| One material/object per drone | single shared LED material + Point Cloud / instances |
-| Reading live `bpy.data` inside handlers | read **evaluated** depsgraph data |
-| Reinventing an animation editor | Dope Sheet / Graph Editor / NLA |
-| Reordering drone identity | stable `drone_id`/point-index; only slots change |
-| Relying only on legacy `bl_info` | ship `blender_manifest.toml` (Extensions) |
-
----
-
-## 9. Confirmed Decisions (locked)
-
-1. **Hungarian algorithm — `scipy.optimize.linear_sum_assignment`, lazy-loaded + pure-Python fallback.**
-   Use scipy as the primary assignment implementation when available.
-   Do not vendor scipy; try `import scipy.optimize` at runtime and,
-   if absent, fall back to a bundled pure-Python Hungarian implementation. Both paths must be tested
-   against brute force before claiming equivalent results; neither implementation is present yet.
-2. **Primary swarm representation — Point Cloud (data backbone) + Instance-on-Points (visual skin), single shared LED material.** Confirmed.
-3. **Minimum Blender version — `blender_version_min = "4.5.0"` (LTS).** The manifest targets Blender 4.5
-   LTS (released 2025-07-15, supported with fixes through July 2027). Verify the planned APIs in
-   that version, especially Point Cloud editing and the proposed Geometry Nodes operations,
-   before relying on them. The minimum-version declaration is not proof that every roadmap
-   feature is available or tested. No support for releases older than 4.5. Confirmed.
-4. **UgCS PATH3 — planned MVP writer (NOT behind an experimental flag).** Implement alongside PATH and validate against the documented PATH3 constraints; the writer is not implemented yet.
-5. **Depence format — planned launch target.** Treat as a first-class writer from the start (the
-   least-documented of the five, so its golden-file test is the acceptance gate for its fidelity).
-6. **Pyro payloads — planned model and authoring UI.** Because pyro is not
-   required to produce end-to-end *animations*, it is scheduled in the **post-MVP accelerator phase
-   (Phase 6)** — but when built there it is a complete feature (data model + UI), not deferred.
-7. **Geo-referencing — local ENU (East-North-Up) tangent-plane / flat-earth approximation, anchored
-   at the show origin.** This is the best fit for this project: it is the de-facto standard for drone
-   shows (local meters → real-world via a single lat/lon/alt anchor), is simple and well-documented,
-   is accurate across a typical ~1 km show footprint, and is what the target export stacks expect
-   (matches the VVIZ `globalReferenceFrame` and UgCS conventions). Full UTM/MGRS is NOT pursued.
-   The **minimal origin anchor** lives in the **MVP export phase** (Phase 5, needed for VVIZ/Depence
-   `globalReferenceFrame`); richer geo-ref tooling (map anchor picker, CRS presets) is Phase 6.
-8. **Music sync — planned full feature, scheduled post-MVP (Phase 6)** per the
-   MVP rule (not required to produce an animation end-to-end). Implements VSE audio-lane cues +
-   `eventTags`; full beat-detection remains optional/later.
-
-### MVP boundary (governing sequencing rule)
-**The MVP = Phases 0–5: the minimum slice that produces a drone-show animation end-to-end** (create →
-animate → transition → validate → export to a real control format). **Phase 6 (accelerators) and
-Phase 7 (polish) are explicitly post-MVP.** Anything the user approved as "include now" but that is
-*not required to produce an animation end-to-end* (pyro, music sync, QR/text generators, flocking,
-import round-trip, presets, full geo-ref tooling) is kept in the plan as a committed feature but
-**sequenced into Phase 6+**, never blocking the end-to-end MVP. Export formats are end-to-end
-essential, so PATH3 and Depence stay in the MVP export phase.
-
----
-
-## 10. Summary
-
-This plan rebuilds Sirius on a **bpy-free core + thin Blender adapter** so the hard parts
-(assignment, collision, feasibility, coordinate conversion, five export encoders) are unit-testable
-and version-isolated. The **Point Cloud + instances** swarm solves the prototype's scalability
-failure; **Geometry Nodes** provides idiomatic formation generation; **native F-Curves/NLA** provides
-animation without a custom editor; the **`gpu` module** provides modern viewport feedback. The
-phases move from *stabilize → generate → animate → transition → validate → export* (the **MVP**,
-Phases 0–5) then *accelerate → polish* (post-MVP, Phases 6–7), each with explicit deliverables,
-dependencies, risks, and a test milestone. The export engine is format-agnostic at its core (unified
-`TrajectorySample` sampler) with one writer per real-world format — **CSV, Vimdrones, UgCS PATH and
-PATH3, VVIZ, Depence** — to be validated against target specifications, with ENU geo-anchoring and an
-export sample rate decoupled from the viewport fps.
-
-**Next action for the implementer:** all §9 decisions are locked — begin **Phase 0**.
+The branches express technical dependencies. A solo developer should still keep
+one implementation task active. Research on receiver formats and designer needs
+can begin early without building their adapters early.
+
+Read [architecture](docs/architecture.md) for data ownership,
+[lighting and preview](docs/lighting-and-preview.md) for detailed interactions,
+and [validation and export](docs/validation-and-export.md) for correctness gates.
+Use [performance and evaluation](docs/performance-and-evaluation.md) for benchmark
+fixtures, comparison conditions, and measured acceptance criteria.
+The [decision register](docs/decisions.md) separates recommendations from choices
+that still require an experiment or maintainer decision.
+
+## M0 — Establish a reliable development baseline
+
+**Outcome:** understand and install the existing prototype, then make its small
+set of operations predictable on the chosen Blender build.
+
+**Starting files:** `__init__.py`, `blender/registry.py`, `props.py`,
+`operators/create_takeoff_grid.py`, `operators/change_led_color.py`,
+`materials/drone_emission_material.py`, `blender_manifest.toml`.
+
+Work in separate changes:
+
+1. Trace the entry point, registration, grid creation, and material creation.
+   Reproduce current behavior in a disposable file and record the exact Blender
+   build, traceback, and scene changes. Preserve the registry already written.
+2. Make grid creation preserve unrelated scene state. Treat preview setup as a
+   separate operation. Address Blender API failures in that operation's scope.
+3. Handle insufficient capacity, missing collections/materials, empty selection,
+   and repeated creation. Define cancellation, undo/redo, and partial-failure
+   behavior before adding more UI controls.
+4. Establish a repeatable extension package and install procedure using reviewed
+   source files. Exclude caches, virtual environments, personal notes, and client
+   assets. Resolve the distribution-license decision before a public platform
+   submission. Do not change the license merely to silence a packaging error.
+5. Add the first meaningful regression tests and a minimal test runner. Make it
+   possible to import pure modules without the package importing `bpy` first.
+   Keep ordinary Python tests separate from Blender integration tests.
+6. Remove tracked bytecode. Record a clean install/enable/disable/re-enable test.
+   Align the manifest and README with actual tested versions, initially 5.2 LTS.
+
+**Learning:** imports, side effects, resource ownership, exceptions, small tests,
+and Blender's registration/undo lifecycle.
+
+**Exit evidence:** a saved reproduction and verification record; no destructive
+compositor edits during grid creation; meaningful error behavior; an installable
+development package with an inspected file list. No compatibility claim for a
+build that was not exercised. Verify file-system behavior in a disposable folder.
+
+## M1 — Give a show identity, time, and persistence
+
+**Depends on:** M0. **Outcome:** a small show remains the same show after renaming,
+reordering, undo, and reopening the file.
+
+Start with the minimum data needed by one grid and one light effect:
+
+- Show identity and schema version; drone identities; namespaced ownership of
+  generated Blender data; explicit membership in the current show.
+- A distinction between a drone, a formation slot, its home position, and an
+  external hardware assignment. Do not equate identity with point index or name.
+- Show time in seconds; an explicit frame origin and rational frame rate; units
+  and coordinate conventions. Scene scale, subframes, and non-24 fps must work.
+- Saved authoring data and asset references in the `.blend`; transient numerical
+  snapshots for computation; derived caches that can be discarded and rebuilt.
+- Schema migration policy, duplicate-ID detection, and clear handling of missing
+  objects or assets. A copied show needs a deliberate identity policy.
+- A small pure-Python evaluator contract and tests for invalid/non-finite data,
+  duplicate IDs, time conversion, and save/load equivalence through the adapter.
+
+Keep the current object-based representation until a small experiment compares
+shared meshes/materials, a mesh with point attributes, and a native point cloud.
+Test selection, per-drone color, evaluated positions, and persistence as well as
+speed. M9 makes the final scale decision from benchmarks.
+Record the first 64- and 1,000-drone fixture definitions, reference hardware, and
+creation/evaluation/memory measurements before changing representation. Expand
+these fixtures as real features arrive; they are not a separate framework project.
+
+**Learning:** data modeling, invariants, ownership, serialization, and boundaries.
+
+**Exit evidence:** a 16-drone project survives rename/reorder/save/reopen without
+changing the ID-to-position mapping. Ordinary Python can exercise its numerical
+model without launching Blender. Unit and time conversions have hand-computed
+examples. A failed load or migration does not overwrite the original file.
+
+## M2 — Build the first moving light mask
+
+**Depends on:** M1. **Outcome:** sweeping a hidden sphere through a small static
+formation changes its LEDs predictably while scrubbing in either direction.
+
+Implement one small feature at a time:
+
+1. A base LED color/intensity program with group and selection targeting.
+2. A spherical mask evaluated in its own coordinate system, with a visible
+   authoring guide and no geometry in the final render.
+3. Start/end times and a fade, then a second layer with defined ordering and
+   opacity. Add mute, solo, and an inspection readout for one drone.
+4. A deterministic evaluation path shared by viewport and data sampling. Scrub
+   directly to a frame and obtain the same result as sequential playback.
+5. An explicit boundary between artistic color, device LED output, and rendered
+   light appearance. Brightening the camera preview must not change the show.
+
+Do not start with arbitrary mesh containment, a custom node editor, or thousands
+of per-drone color keys. Add those capabilities after the small behavior is clear.
+
+**Learning:** coordinate spaces, scalar fields, interpolation, pure functions,
+and composition. Use the short readings in [research](docs/research.md#learning-references).
+
+**Exit evidence:** a 16–64 drone demonstration, boundary cases for mask membership,
+two overlapping effects with predictable order, and matching sampled colors after
+save/reopen. Moving, rotating, and scaling the mask follows its documented rules.
+
+## M3 — Complete a small design demonstrator
+
+**Depends on:** M2. **Outcome:** a short show can be designed, saved, reviewed,
+rendered, and exported as documented interchange.
+
+- Author two simple formations and a manually specified transition. Automatic
+  path planning is not a prerequisite for this demonstrator.
+- Use one show timeline with holds, motion, LED cues, and a music reference.
+  Start with Blender markers and a clear cue list; make retiming explicit.
+- Define the first version of Sirius JSON and CSV: units, timestamps, identities,
+  color encoding, interpolation, ordering, and schema version. Implement a small
+  reader to check semantic round trips, with deliberately independent fixtures.
+- Provide basic sampled spacing/speed diagnostics, labeled with their limited
+  coverage. Report invalid samples and missing data. Do not attach a full-show
+  safety claim to these early checks.
+- Add a preview operation for the current frame and a selected/full show range.
+  Supply a camera and conservative LED appearance defaults in a separate preview
+  scene or an explicitly owned setup. Preserve the authoring scene.
+- Render an image sequence, make a review video where the build supports it, and
+  restore frame, selection, and render state after completion or cancellation.
+
+**Learning:** end-to-end data flow, file contracts, evaluation at arbitrary times,
+and integration testing.
+
+**Exit evidence:** a reproducible 30-second, 32–64 drone example containing two
+formations, one moving mask, a cue, a still image, a full-range preview, and a
+readable interchange export. A fresh session can reopen and reproduce it. This
+is the first design demonstrator, not an execution package.
+Record the designer steps and elapsed time for a mask edit, cue retime, and preview
+setup. Compare the same tasks with current Skybrush where available and retain
+the files and versions so later improvements can be measured.
+
+## M4 — Make formation and cue authoring practical
+
+**Depends on:** M3. **Outcome:** a designer can build and revise a multi-scene show
+without manually managing every drone.
+
+- Formation sources: line/circle/grid, curves, text and SVG/logo outlines, then
+  mesh surfaces and volumes. Support evaluated modifiers and animated sources.
+- Exact requested counts, deterministic seeds, minimum spacing, edge/corner
+  preservation, density weights, and group allocation. Report infeasible count
+  and spacing requests rather than silently changing either.
+- Separate fixed slots from regenerated samples. Explain when source edits
+  invalidate assignments. Preview before replacing generated data.
+- Cue list with holds, transitions, overlaps, named groups, relative LED cues,
+  insert/move/duplicate/ripple operations, and duration changes. Prevent two cues
+  from owning the same drone's motion ambiguously.
+- Reserve/overflow groups, partial formations, manual slot locks, reusable
+  formation assets, and import of documented coordinate/trajectory data.
+- Audience cameras, readability checks, dimensions, and a site-layout overlay.
+  Handle text/QR density honestly: assess readability at a stated viewpoint and
+  distance instead of promising every source shape will work.
+
+**Learning:** geometric sampling, constrained allocation, dependency tracking,
+and interaction design. Prototype native Action/NLA integration before promising
+it as the whole show editor.
+
+**Exit evidence:** a representative show can change its drone count, replace a
+logo, and move a cue with understandable invalidation and undo. Tests cover
+infeasible counts, disconnected geometry, changed topology, and missing assets.
+Observe at least one other designer attempting these tasks without coaching.
+
+## M5 — Generate trajectories under explicit constraints
+
+**Depends on:** M4. **Outcome:** generate candidate motion, explain failure, and
+retain designer control over assignments and timing.
+
+- Introduce versioned fleet profiles: horizontal/vertical speed, acceleration,
+  jerk where required, yaw/rate support, tracking margins, separation rules,
+  launch/landing behavior, and duration/battery-reserve assumptions. Mark unknown
+  values; do not invent universal limits.
+- Treat assignment, geometric path, time parameterization, and validation as
+  separate steps. Try tiny examples with exhaustive solutions before selecting
+  an assignment solver. Specify cost, ties, locked matches, forbidden matches,
+  and what happens when no solution exists.
+- Start with transparent trajectory families and restricted scenes. Add speed
+  and acceleration checks before claiming jerk bounds. Preserve continuity at
+  holds, joins, launch, and landing, including manual edits.
+- Add launchpad shapes, staggered takeoff, ascent/descent corridors, aerial return,
+  home allocation, landing order, obstacles, and site boundaries. Ground density
+  rules may differ from airborne separation rules.
+- Provide previews of timing changes, locks, reversals, and replanning. A repair
+  must not silently alter the approved creative timing or drone identity.
+- Investigate deconfliction only after counterexamples expose the limits of the
+  first planner. Candidate approaches include staged motion, safe corridors, or
+  constrained optimization. No solver is accepted merely for producing a path.
+- Include cancellation, bounded attempts, deterministic seeds, progress, and a
+  useful result when a solve times out or the problem is infeasible. Distinguish
+  proven infeasibility from failure to find a solution within the budget.
+- Compare valid-solution rate, runtime, peak memory, transition duration, travel,
+  and constraint margins on a fixed corpus. Keep small exhaustive reference cases
+  independent of production optimizations. A shorter solve with worse motion or
+  incomplete checks is a tradeoff to report, not an unqualified improvement.
+
+**Learning:** optimization objectives, matching, kinematics, numerical tolerance,
+and the distinction between finding a candidate and verifying it.
+
+**Exit evidence:** reproducible cases for ordinary transitions, head-on conflicts,
+unequal groups, obstacle conflicts, locked assignments, short durations, and
+takeoff/landing. The planner can refuse a task with a concrete explanation.
+The next milestone independently checks every candidate trajectory.
+Publish the supported problem class and unresolved failures. A heuristic timeout
+must not be reported as proof that a show is impossible.
+
+## M6 — Validate the entire evaluated show
+
+**Depends on:** M5. **Outcome:** a report identifies violations and the coverage
+of checks for a specific immutable show revision.
+
+- Check input/schema integrity, whole-show time coverage, position continuity,
+  speed/acceleration/jerk as supported, pair separation, obstacles, altitude,
+  geofences, start/end conditions, and fleet profile limits.
+- Cover motion between samples. Use exact interval checks where the trajectory
+  model allows them, or conservative bounds/subdivision with documented error
+  limits. If a region cannot be assessed, return incomplete rather than passed.
+- Include tracking/position/time uncertainty and downwash-related separation
+  rules supplied by the fleet profile. Neither a generic sphere nor a static
+  nearest-neighbor query is a complete operational separation model.
+- Track profile, site, trajectory, effect, and asset revisions. Invalidate reports
+  on relevant edits and verify both authored motion and converted/exported motion.
+- Provide a report list linked to timeline ranges and drone IDs, overlays,
+  nearest-approach inspection, plots, and machine-readable plus human-readable
+  reports. Distinguish warnings, violations, unsupported checks, and incomplete jobs.
+- Keep diagnostic/visualization outputs available with clear status. Block an
+  execution-target package if required checks fail, are stale, or are incomplete.
+  Record any policy-permitted warning acknowledgment in the package.
+
+**Learning:** independent oracles, continuous versus sampled reasoning, numerical
+error bounds, and evidence that remains valid after an edit.
+
+**Exit evidence:** deliberately adversarial examples, including an intersection
+between sample times, Bézier overshoot, invalid numeric data, a stale report,
+and a violation introduced by export conversion. Compare results with a simple
+independent implementation on small fixtures and obtain specialist review before
+using the validator to support operational decisions.
+
+## M7 — Qualify exporters one at a time
+
+**Depends on:** M3 interchange and M6 for execution-toolchain outputs.
+**Outcome:** a receiving application imports the exact intended motion and lights.
+
+1. Harden the Sirius interchange schema and independent reader.
+2. Implement VVIZ as a visualization adapter and test it in a named compatible
+   viewer. Do not use it as the safety validation transport.
+3. Select one execution-toolchain target with an operator who can test it. SKYC
+   is a useful research candidate; PATH/PATH3 and Vimdrones remain candidates
+   until specifications, fixtures, and receiver access exist.
+4. Add further targets based on actual users, one profile/version at a time.
+   Investigate Depence Show Stream separately from VVIZ.
+5. For every adapter, publish capabilities and losses: coordinates, datum, rates,
+   interpolation, timestamps, color encoding, headings, hardware mapping, limits,
+   optional channels, and expected downstream compilation or optimization.
+6. Package validation evidence, content hashes, exact versions, ID/home mappings,
+   profiles, origin/orientation, assets, and operator notes. Write atomically and
+   handle cancellation, disk errors, and existing-file conflicts.
+
+**Learning:** protocol contracts, versioning, lossy conversion, conformance tests,
+and the limits of self-generated golden files.
+
+**Exit evidence per adapter:** pinned reference, hand-derived cases, independent
+decode, tests of information loss, receiver import/simulation, and a signed-off
+compatibility record from the testing operator. Label untested targets experimental.
+If downstream software changes trajectories, qualify that final behavior too.
+Having several writers in the repository is not a substitute for these checks.
+
+## M8 — Finish the lighting and render production workflows
+
+**Depends on:** M3; uses M4 cue/group editing and M6 revision tracking.
+**Outcome:** designers can revise complex light programs and produce consistent
+client previews without rebuilding the scene by hand.
+
+- Expand mask primitives to boxes, planes, cylinders, curves, and closed meshes;
+  add invert/combine, feathering, coordinate-space options, and membership debug.
+- Add gradients, chases, waves, deterministic noise/sparkles, image/video
+  projection, palettes, fades, reusable clips, and a clearly defined blend stack.
+- Add RGBW/device mapping, per-fleet calibration, brightness limits, gamut/clip
+  inspection, and explicit conversions. Preserve high precision until encoding.
+- Add manual music cues and tempo maps before optional beat detection. Retiming
+  must distinguish moving, stretching, and repeating an effect.
+- Support reusable effect assets with their referenced masks/media, versions,
+  provenance, and licensing. Diagnose missing resources after file transfer.
+- Provide draft and final render presets; per-camera exposure/lens settings;
+  LED beam/diffuser appearance; sky, atmosphere, ground, and site context;
+  audience cameras and frame-range/camera queues.
+- Produce stills, image sequences, and delivery video with correct audio offset,
+  resolution, color settings, and provenance. Allow headless batch rendering,
+  resume, cancellation, and restoration of editor state.
+- Compare visual presets with measured or photographed LED references when
+  available. Label uncalibrated renders as artistic previews. The camera image
+  is not the device LED signal or evidence of actual visibility at the site.
+
+**Learning:** color spaces, media sampling, temporal aliasing, reproducibility,
+and separating presentation from domain data.
+
+**Exit evidence:** the lighting acceptance cases and render comparison tests in
+[lighting and preview](docs/lighting-and-preview.md). A designer can package a
+show, reopen it elsewhere, and render the same revision without missing effects.
+
+## M9 — Scale, automation, and team handoff
+
+**Depends on:** M6; begin measurements at M1 and retain them throughout.
+**Outcome:** large shows remain editable, analyzable, and reproducible on stated
+hardware, with a useful batch workflow for production teams.
+
+- Benchmark 64, 1,000, 5,000, and 10,000 drones using both sparse and dense cases,
+  a 10-minute timeline, varied effects, and actual export rates. The larger
+  numbers are qualification targets, not existing capacity claims.
+- Measure creation, scrub latency, playback, effect evaluation, solve time,
+  validation, export, file size, and peak memory. Publish hardware/builds and
+  cold/warm cache results. Set budgets before optimizing; a provisional goal is
+  24 fps for a representative 1,000-drone preview, subject to measurement.
+- Compare representation choices under selection, editing, rendering, and
+  headless evaluation. Optimize bulk data movement and caches before considering
+  native extensions or GPU computation.
+- Follow the [comparison protocol](docs/performance-and-evaluation.md#comparison-protocol).
+  Profile Blender scene access, numerical work, data transfer, and output encoding
+  separately. Check an optimized implementation against the reference results
+  before accepting a speedup; publish raw timings and tradeoffs.
+- Stream long exports, chunk analysis, bound memory, expose progress/cancellation,
+  and avoid retaining the whole sampled show as Python objects. Keep full
+  validation/export fidelity independent of viewport level of detail.
+- Add a documented headless interface, batch validation/export/render jobs, exit
+  codes, manifests, deterministic settings, and reproducible error reports.
+- Support team handoff through versioned show bundles, relative asset paths,
+  missing-asset checks, change reports, approval records tied to hashes, and
+  migration/rollback. Begin with file handoff; concurrent cloud editing is a
+  separate product decision.
+- Make third-party extensions possible through versioned adapter/effect contracts
+  after two real implementations reveal the needed interface. External scripts
+  are trusted code, not safe media files.
+
+**Learning:** profiling, algorithmic complexity, memory layout, cache invalidation,
+and API stability.
+
+**Exit evidence:** published benchmark fixtures and results, graceful handling of
+resource limits, repeatable batch output, and tested multi-person handoff. Do not
+raise a drone-count setting and call the result scalable.
+
+## M10 — Earn production trust
+
+**Depends on:** M0–M9, with only explicitly documented optional capabilities
+excluded. **Outcome:** a release a professional team can evaluate and support.
+
+- Run discovery and pilot evaluations with designers and operators. Use their
+  actual review/export tasks, record time and errors, and prioritize blockers.
+- Finish site workflows: surveyed origin, orientation and vertical datum,
+  terrain/obstacle context, audience zones, launch/landing maps, home labels,
+  hardware-ID assignment, spares, and alternatives for reduced fleet size.
+  Revalidate every changed deployment; do not remove drones and reuse approval.
+- Produce a production bundle with show revision, checks, maps, cue/audio timing,
+  adapter/fleet versions, file hashes, known limitations, and handoff notes.
+  Include documented contingency assumptions; live responses remain the flight
+  operator and control system's responsibility.
+- Publish installation, first-show, lighting, preview, troubleshooting, migration,
+  and adapter guides; example projects with asset licenses; keyboard/accessibility
+  behavior; consistent units, labels, and error messages.
+- Test supported Blender/OS combinations, fresh profiles, upgrades, old project
+  migrations, missing assets, offline use, cancellation, interrupted writes, and
+  long-running sessions. Maintain a current-release compatibility process.
+- Release through reproducible packages with notices, changelog, artifact hashes,
+  dependency inventory, known issues, and a documented support/security-reporting
+  route. Establish review, release ownership, deprecation, and maintenance policy.
+- Require independent numerical review and receiver/operator qualification for
+  advertised operational workflows. Record limited/unverified checks explicitly.
+  Simulation alone is insufficient evidence of behavior on a real fleet.
+- Publish evidence for any comparison with other tools: exact versions, backend
+  mode, tested tasks, quality settings, results, and limitations. Evaluate migration
+  and team handoff as well as editing speed. Refresh claims when versions change.
+
+**Exit evidence:** an external team can install, learn, revise, validate, render,
+and hand off a representative show using the published materials. Every supported
+execution adapter has the evidence described in M7. Release notes describe what
+was tested, where it was tested, and which limitations remain.
+
+## Advanced capabilities and explicit boundaries
+
+These remain in the long-term program. Each needs a user, an acceptance scenario,
+and a small design decision before implementation.
+
+| Capability | Prerequisites and scope |
+| --- | --- |
+| Indoor shows and alternative positioning systems | Site/fleet profiles and receiver support; distinct tracking and separation assumptions |
+| Mixed fleets and heterogeneous LED payloads | Per-drone constraints, calibrated device mapping, assignment restrictions, and adapter tests |
+| Dense 3D transitions and difficult obstacles | M6 validator; compare planning methods on representative hard cases |
+| Procedural/flocking effects | Creative trajectory inputs that must still pass all motion and separation checks |
+| External show-control cues/timecode | Document clock authority, offsets, drift, and failover; initially export cue metadata only |
+| Pyrotechnic or other hazardous payloads | Separate specialist design and qualification; begin with visualization metadata; never infer firing support from a format field |
+| Terrain/CRS integrations and survey imports | Explicit accuracy, licensing, datum, offline assets, and dependency policy |
+| Web review and render-farm integrations | Reuse versioned bundles and batch jobs; local authoring remains complete |
+| Concurrent collaboration | Evidence that file-based handoff is insufficient; access control and conflict semantics require their own scope |
+| Advanced automatic optimization | Explain objective tradeoffs; preserve designer locks; validate independently |
+
+## Working rules
+
+Implement one behavior at a time. Pair it with an observable example and a test
+where failure would matter. Keep pure numerical tests, Blender integration,
+receiver conformance, and operator qualification as separate evidence.
+
+Before a milestone starts, choose its next small task from current code and
+prerequisites. Do not generate an entire directory tree or hundreds of tickets
+in advance. Update the plan when an experiment disproves an assumption. The
+architecture describes contracts and tradeoffs; the implementer still designs
+and writes the code.
